@@ -20,6 +20,7 @@ export type ChatMessageColumnProps = {
   onRetryMessage?: (threadId: string, messageId: string) => void;
   /** When this increments after the user sends (or retries), scroll once—not on streaming tokens. */
   scrollEpoch: number;
+  exportClipDragEnabled?: boolean;
 };
 
 export function ChatMessageColumn({
@@ -28,8 +29,10 @@ export function ChatMessageColumn({
   onPickPrompt,
   onRetryMessage,
   scrollEpoch,
+  exportClipDragEnabled = false,
 }: ChatMessageColumnProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
   /** Empty on server and while hydrating so SSR HTML matches first client paint; then apply enter motion. */
   const enterChatMotion = React.useSyncExternalStore(
     () => () => {},
@@ -79,6 +82,7 @@ export function ChatMessageColumn({
               <MessageBubble
                 key={m.id}
                 message={m}
+                exportClipDragEnabled={exportClipDragEnabled}
                 onRetry={
                   onRetryMessage
                     ? (messageId) => onRetryMessage(activeThread.id, messageId)

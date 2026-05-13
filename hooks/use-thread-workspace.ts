@@ -8,6 +8,7 @@ import { groupThreadsHeuristic } from "@/lib/group-threads"
 import type {
   AssistantErrorKind,
   ChatMessage,
+  QuizChatMessage,
   Thread,
 } from "@/lib/chat-types"
 import {
@@ -17,6 +18,7 @@ import {
   type ModelId,
 } from "@/lib/mock-threads"
 import {
+  appendMessageToThread,
   appendMessagesToThread,
   appendTokenToPending,
   buildThreadTitleFromUserText,
@@ -37,9 +39,11 @@ import {
   applyThreadIdToSearchParams,
   pathForThreadDeepLink,
 } from "@/lib/thread-url"
+import { threadToExportDraftMarkdown } from "@/lib/conversation-export-draft"
+import { loadExportSettings } from "@/lib/conversation-export-settings"
+import type { ConversationExportFormat } from "@/lib/conversation-export-settings"
 import {
   downloadTextFile,
-  printThreadAsPdf,
   sanitizeFilename,
   threadToMarkdown,
 } from "@/lib/thread-export"
@@ -75,10 +79,57 @@ export function useThreadWorkspace({
   const [streamInFlight, setStreamInFlight] = React.useState(false)
   /** Bumped only when the user submits a message (or retry) so the message column can scroll once—never on streaming tokens. */
   const [scrollEpoch, setScrollEpoch] = React.useState(0)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [exportDialogThreadId, setExportDialogThreadId] = React.useState<
+    string | null
+  >(null)
+  const [exportConversationFormat, setExportConversationFormat] =
+    React.useState<ConversationExportFormat>("pdf")
+  const [exportStagingByThreadId, setExportStagingByThreadId] = React.useState<
+    Record<string, string>
+  >({})
+
+  const [exportDialogSession, setExportDialogSession] = React.useState(0)
 
   const bumpScrollToLatest = React.useCallback(() => {
     setScrollEpoch((n) => n + 1)
   }, [])
+
+  type QuizSessionSnapshot = {
+    threadId: string
+    messages: ChatMessage[]
+  }
+
+  const [quizSession, setQuizSession] =
+    React.useState<QuizSessionSnapshot | null>(null)
+  const [quizSessionKey, setQuizSessionKey] = React.useState(0)
+
+  const closeQuizSession = React.useCallback(() => {
+    setQuizSession(null)
+  }, [])
+
+  const completeQuizSession = React.useCallback(
+    (threadId: string, msg: QuizChatMessage) => {
+      setThreadsState((prev) =>
+        appendMessageToThread(prev, threadId, msg),
+      )
+      bumpScrollToLatest()
+      setQuizSession(null)
+    },
+    [bumpScrollToLatest],
+  )
+
+  const startQuizMe = React.useCallback(
+    (thread: Thread) => {
+      if (streamInFlight || quizSession != null) return
+      setQuizSessionKey((n) => n + 1)
+      setQuizSession({
+        threadId: thread.id,
+        messages: [...thread.messages],
+      })
+    },
+    [quizSession, streamInFlight],
+  )
 
   const workspaceAbortRef = React.useRef<AbortController | null>(null)
   /** Tracks which pending bubble the in-flight stream belongs to. */
@@ -362,9 +413,63 @@ export function useThreadWorkspace({
     downloadTextFile(name, body, "text/markdown;charset=utf-8")
   }, [])
 
-  const exportThreadPdf = React.useCallback((thread: Thread) => {
-    printThreadAsPdf(thread)
+  const openConversationExport = React.useCallback(
+    (
+      thread: Thread,
+      format: ConversationExportFormat,
+      opts?: { stagingMarkdown?: string },
+    ) => {
+      setExportDialogSession((n) => n + 1)
+      setExportDialogThreadId(thread.id)
+      setExportConversationFormat(format)
+      setExportStagingByThreadId((prev) => {
+        if (opts?.stagingMarkdown !== undefined) {
+          return { ...prev, [thread.id]: opts.stagingMarkdown }
+        }
+        if (prev[thread.id] !== undefined) return prev
+        return {
+          ...prev,
+          [thread.id]: threadToExportDraftMarkdown(thread, loadExportSettings()),
+        }
+      })
+      setExportDialogOpen(true)
+    },
+    [],
+  )
+
+  const onExportDialogOpenChange = React.useCallback((open: boolean) => {
+    setExportDialogOpen(open)
+    if (!open) setExportDialogThreadId(null)
   }, [])
+
+  const activeExportThread = React.useMemo(
+    () => threads.find((t) => t.id === exportDialogThreadId) ?? null,
+    [threads, exportDialogThreadId],
+  )
+
+  const conversationExportStaging =
+    exportDialogThreadId != null
+      ? (exportStagingByThreadId[exportDialogThreadId] ?? "")
+      : ""
+
+  const patchConversationExportStaging = React.useCallback(
+    (threadId: string, updater: (prev: string) => string) => {
+      setExportStagingByThreadId((prev) => {
+        const cur = prev[threadId]
+        if (cur === undefined) return prev
+        return { ...prev, [threadId]: updater(cur) }
+      })
+    },
+    [],
+  )
+
+  React.useEffect(() => {
+    if (!exportDialogOpen || !exportDialogThreadId) return
+    if (!threads.some((t) => t.id === exportDialogThreadId)) {
+      setExportDialogOpen(false)
+      setExportDialogThreadId(null)
+    }
+  }, [exportDialogOpen, exportDialogThreadId, threads])
 
   const activeThread = threads.find((t) => t.id === activeThreadId)
   const isEmptyChat =
@@ -798,7 +903,15 @@ export function useThreadWorkspace({
     togglePinThread,
     openThreadInNewTab,
     exportThreadMarkdown,
-    exportThreadPdf,
+    openConversationExport,
+    exportDialogOpen,
+    exportDialogSession,
+    onExportDialogOpenChange,
+    exportConversationFormat,
+    activeExportThread,
+    conversationExportStaging,
+    patchConversationExportStaging,
+    exportDialogThreadId,
     startNewChatWithFirstMessage,
     handleSend,
     stopStream,
@@ -809,5 +922,10 @@ export function useThreadWorkspace({
     canSendMessage,
     sendButtonTooltip,
     newChat,
+    startQuizMe,
+    quizSession,
+    quizSessionKey,
+    closeQuizSession,
+    completeQuizSession,
   }
 }

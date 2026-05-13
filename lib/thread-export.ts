@@ -1,5 +1,7 @@
 import type { ChatMessage, Thread } from "@/lib/chat-types"
 
+import { quizChatMessageToMarkdown } from "@/lib/quiz-markdown"
+
 export function sanitizeFilename(title: string): string {
   const base = title.replace(/[/\\?%*:|"<>]/g, "-").trim()
   return base.length > 0 ? base : "chat"
@@ -15,6 +17,11 @@ function escapeHtml(s: string): string {
 
 function messagePlainText(m: ChatMessage): string {
   if (m.type === "assistant-pending") return "_(pending)_"
+  if (m.type === "quiz") return quizChatMessageToMarkdown(m)
+  if (m.type === "assistant-error") {
+    const err = `[${m.kind}] ${m.message}`
+    return m.content ? `${m.content}\n\n(${err})` : err
+  }
   return m.content
 }
 
@@ -23,6 +30,8 @@ export function threadToMarkdown(thread: Thread): string {
   for (const m of thread.messages) {
     if (m.type === "user") {
       lines.push("## User", "", m.content, "")
+    } else if (m.type === "quiz") {
+      lines.push("## Quiz", "", messagePlainText(m), "")
     } else {
       lines.push("## Assistant", "", messagePlainText(m), "")
     }
@@ -47,6 +56,7 @@ export function downloadTextFile(
 
 function messageRoleLabel(m: ChatMessage): string {
   if (m.type === "user") return "User"
+  if (m.type === "quiz") return "Quiz"
   return "Assistant"
 }
 
@@ -74,8 +84,13 @@ ${parts.join("")}
 /** Opens a print dialog so the user can save as PDF (browser-dependent). */
 export function printThreadAsPdf(thread: Thread): void {
   const html = buildPrintHtml(thread)
-  const w = window.open("", "_blank", "noopener,noreferrer")
+  const w = window.open("", "_blank")
   if (!w) return
+  try {
+    w.opener = null
+  } catch {
+    /* ignore */
+  }
   w.document.open()
   w.document.write(html)
   w.document.close()

@@ -98,6 +98,33 @@ export function appendMessagesToThread(
   )
 }
 
+export function appendMessageToThread(
+  threads: Thread[],
+  threadId: string,
+  message: ChatMessage,
+): Thread[] {
+  return threads.map((t) =>
+    t.id === threadId ? { ...t, messages: [...t.messages, message] } : t,
+  )
+}
+
+export function patchMessageInThread(
+  threads: Thread[],
+  threadId: string,
+  messageId: string,
+  updater: (m: ChatMessage) => ChatMessage,
+): Thread[] {
+  return threads.map((t) => {
+    if (t.id !== threadId) return t
+    return {
+      ...t,
+      messages: t.messages.map((m) =>
+        m.id === messageId ? updater(m) : m,
+      ),
+    }
+  })
+}
+
 export function buildThreadTitleFromUserText(trimmed: string): string {
   const collapsedTitle = trimmed.replace(/\s+/g, " ")
   if (collapsedTitle.length > 52) {

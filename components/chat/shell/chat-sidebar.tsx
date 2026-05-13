@@ -26,6 +26,7 @@ import {
 import { MAX_PINS, THREAD_DRAG_MIME } from "@/lib/chat-constants"
 import { setPinThreadDragPreview } from "@/lib/chat-dnd"
 import type { Thread } from "@/lib/chat-types"
+import type { ConversationExportFormat } from "@/lib/conversation-export-settings"
 import { cn } from "@/lib/utils"
 
 export type ChatSidebarProps = {
@@ -49,7 +50,11 @@ export type ChatSidebarProps = {
   requestDeleteThread: (thread: Thread) => void
   openThreadInNewTab: (threadId: string) => void
   exportThreadMarkdown: (thread: Thread) => void
-  exportThreadPdf: (thread: Thread) => void
+  openConversationExport: (
+    thread: Thread,
+    format: ConversationExportFormat,
+    opts?: { stagingMarkdown?: string },
+  ) => void
 }
 
 export function ChatSidebar(props: ChatSidebarProps) {
@@ -74,7 +79,7 @@ export function ChatSidebar(props: ChatSidebarProps) {
     requestDeleteThread,
     openThreadInNewTab,
     exportThreadMarkdown,
-    exportThreadPdf,
+    openConversationExport,
   } = props
 
   return (
@@ -146,7 +151,8 @@ export function ChatSidebar(props: ChatSidebarProps) {
                     onOpenNewTab={() => openThreadInNewTab(t.id)}
                     onRename={() => renameThread(t)}
                     onExportMarkdown={() => exportThreadMarkdown(t)}
-                    onExportPdf={() => exportThreadPdf(t)}
+                    onExportPdf={() => openConversationExport(t, "pdf")}
+                    onExportPowerpoint={() => openConversationExport(t, "pptx")}
                     onArchive={() => archiveThread(t.id)}
                     onDeletePermanently={() => requestDeleteThread(t)}
                   >

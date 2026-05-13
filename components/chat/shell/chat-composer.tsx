@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowUp, Mic, Nut, Square } from "lucide-react";
 
+import { ComposerActionsScrollRow } from "@/components/chat/shell/composer-actions-scroll-row";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -68,6 +69,8 @@ export type ChatComposerProps = {
   streamInFlight: boolean;
   stopStream: () => void;
   canDictate: boolean;
+  /** Shown in a bar directly above the composer card (e.g. export actions). */
+  composerActions?: React.ReactNode;
 };
 
 export function ChatComposer({
@@ -83,6 +86,7 @@ export function ChatComposer({
   streamInFlight,
   stopStream,
   canDictate,
+  composerActions,
 }: ChatComposerProps) {
   const speech = useSpeechDictation({ setDraft, streamInFlight });
   const draftEmpty = draft.trim().length === 0;
@@ -125,7 +129,12 @@ export function ChatComposer({
   return (
     <div className="relative z-10 -mt-16 shrink-0 bg-background px-4 pb-4 pt-3 sm:-mt-20 sm:px-6 sm:pb-5 sm:pt-4">
       <div
-        className="pointer-events-none absolute inset-x-0 -top-4 z-[1] h-[8.25rem] bg-[linear-gradient(180deg,transparent_0%,color-mix(in_oklch,var(--background)_70%,transparent)_4%,color-mix(in_oklch,var(--background)_96%,transparent)_11%,var(--background)_26%,var(--background)_100%)] sm:-top-5 sm:h-[9.5rem]"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 -top-4 z-[1] bg-[linear-gradient(180deg,transparent_0%,color-mix(in_oklch,var(--background)_70%,transparent)_4%,color-mix(in_oklch,var(--background)_96%,transparent)_11%,var(--background)_26%,var(--background)_100%)] sm:-top-5",
+          composerActions
+            ? "h-[11.25rem] sm:h-[13.25rem]"
+            : "h-[8.25rem] sm:h-[9.5rem]",
+        )}
         aria-hidden
       />
       <div className="relative z-[2]">
@@ -140,6 +149,11 @@ export function ChatComposer({
             </span>
             <VoiceWaveform />
           </div>
+        ) : null}
+        {composerActions ? (
+          <ComposerActionsScrollRow className="mx-auto mb-2 w-full max-w-3xl px-2 sm:mb-2.5">
+            {composerActions}
+          </ComposerActionsScrollRow>
         ) : null}
         <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 sm:p-1.5">
         <div

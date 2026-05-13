@@ -4,6 +4,35 @@ export type AssistantErrorKind =
   | "provider"
   | "stopped"
 
+/** Single quiz option shown to the learner (display order includes shuffled content + fixed “I don’t know”). */
+export type QuizChoice = {
+  text: string
+  correct: boolean
+}
+
+/** One quiz step after shuffle + appended “I don’t know”. */
+export type QuizQuestionState = {
+  prompt: string
+  pickCount: number
+  choices: QuizChoice[]
+}
+
+export type QuizMessageStatus = "generating" | "in_progress" | "complete" | "error"
+
+/** Inline quiz persisted at the bottom of the thread. */
+export type QuizChatMessage = {
+  id: string
+  type: "quiz"
+  status: QuizMessageStatus
+  errorMessage?: string
+  questions: QuizQuestionState[]
+  currentIndex: number
+  /** One entry per question; indices refer to `choices` display order. */
+  answers: (number[] | null)[]
+  /** Number correct out of 5 when `complete`. */
+  scoreCorrect?: number
+}
+
 export type ChatMessage =
   | { id: string; type: "user"; content: string }
   | { id: string; type: "assistant"; content: string }
@@ -19,6 +48,7 @@ export type ChatMessage =
       /** Human-readable error to surface in the bubble. */
       message: string
     }
+  | QuizChatMessage
 
 export type GroupingSource = "heuristic" | "server"
 

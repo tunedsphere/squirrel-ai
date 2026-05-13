@@ -7,6 +7,7 @@ import {
   FileCode,
   FileDown,
   FileText,
+  Presentation,
   PencilLine,
   Pin,
   PinOff,
@@ -35,6 +36,7 @@ export type HistoryThreadContextMenuProps = {
   onRename: () => void;
   onExportMarkdown: () => void;
   onExportPdf: () => void;
+  onExportPowerpoint: () => void;
   onArchive: () => void;
   onDeletePermanently: () => void;
 };
@@ -49,6 +51,7 @@ export function HistoryThreadContextMenu({
   onRename,
   onExportMarkdown,
   onExportPdf,
+  onExportPowerpoint,
   onArchive,
   onDeletePermanently,
 }: HistoryThreadContextMenuProps) {
@@ -108,6 +111,14 @@ export function HistoryThreadContextMenu({
             >
               <FileText className="size-4" aria-hidden />
               PDF
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={() => {
+                onExportPowerpoint();
+              }}
+            >
+              <Presentation className="size-4" aria-hidden />
+              PowerPoint
             </ContextMenuItem>
             <ContextMenuItem
               onSelect={() => {

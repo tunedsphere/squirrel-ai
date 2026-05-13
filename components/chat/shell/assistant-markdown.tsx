@@ -16,9 +16,10 @@ const markdownComponents: Components = {
     return (
       <a
         href={href}
+        draggable={false}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
+        className="cursor-pointer text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
         {...props}
       >
         {children}

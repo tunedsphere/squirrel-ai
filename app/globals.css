@@ -2,6 +2,7 @@
 @plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./quiz-ui.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -257,6 +258,45 @@
 
   .pin-drag-preview-icon-clone svg {
     flex-shrink: 0;
+  }
+
+  /* PDF export clip: friendlier drag preview than default translucent selection ghost */
+  .export-clip-drag-preview {
+    box-sizing: border-box;
+    pointer-events: none;
+    user-select: none;
+    max-width: min(17rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-xl);
+    background: color-mix(in oklch, var(--popover) 74%, transparent);
+    border: 1px dashed color-mix(in oklch, var(--primary) 45%, var(--border));
+    color: var(--foreground);
+    box-shadow:
+      0 8px 28px color-mix(in oklch, var(--foreground) 14%, transparent),
+      0 0 0 1px color-mix(in oklch, var(--border) 55%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: var(--font-sans);
+    text-align: left;
+  }
+
+  .export-clip-drag-preview__role {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in oklch, var(--muted-foreground) 82%, var(--primary));
+    line-height: 1.2;
+  }
+
+  .export-clip-drag-preview__text {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.42;
+    color: color-mix(in oklch, var(--foreground) 94%, transparent);
   }
 
   :is(.glass, .glass-subtle, .glass-strong, .glass-glow, .glass-liquid) {
@@ -683,5 +723,17 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /* During text / PDF clip HTML5 drag — keep grabbing cursor (sync class name with EXPORT_CLIP_DRAG_CURSOR_HTML_CLASS). */
+  html.export-clip-drag-cursor,
+  html.export-clip-drag-cursor * {
+    cursor: grabbing !important;
+  }
+
+  /* Native selection highlight: theme primary tint (not system blue) */
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 38%, var(--background));
+    color: var(--foreground);
   }
 }
