@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -189,6 +190,29 @@
 }
 
 @layer components {
+  /* Subtle grain: main chat pane only (below header), dark mode; does not cover sidebar */
+  .dark .chat-content-grain {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .dark .chat-content-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.022;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px 128px;
+  }
+
+  .dark .chat-content-grain > * {
+    position: relative;
+    z-index: 1;
+  }
+
   /* Square ghost for “pin thread” drag — accent-tinted, slightly translucent */
   .pin-drag-preview-ghost {
     box-sizing: border-box;

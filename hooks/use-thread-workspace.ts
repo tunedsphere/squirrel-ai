@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { MAX_PINS } from "@/lib/chat-constants"
 import { groupThreadsHeuristic } from "@/lib/group-threads"
@@ -10,7 +10,12 @@ import type {
   ChatMessage,
   Thread,
 } from "@/lib/chat-types"
-import { initialThreads, MODELS, type ModelId } from "@/lib/mock-threads"
+import {
+  initialThreads,
+  LANDING_THREAD_ID,
+  MODELS,
+  type ModelId,
+} from "@/lib/mock-threads"
 import {
   appendMessagesToThread,
   appendTokenToPending,
@@ -38,12 +43,16 @@ export type MainView = "chat" | "library"
 
 export type UseThreadWorkspaceOptions = {
   composerTextareaRef: React.RefObject<HTMLTextAreaElement | null>
+  /** Current `thread` query value from the URL (pass `useSearchParams().get("thread")` from a parent inside `Suspense`). */
+  threadQuery: string | null
 }
 
-export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOptions) {
+export function useThreadWorkspace({
+  composerTextareaRef,
+  threadQuery,
+}: UseThreadWorkspaceOptions) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   const [threads, setThreadsState] = React.useState<Thread[]>(initialThreads)
   const [activeThreadId, setActiveThreadId] = React.useState(
@@ -59,6 +68,12 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
   const [threadPendingDelete, setThreadPendingDelete] =
     React.useState<Thread | null>(null)
   const [streamInFlight, setStreamInFlight] = React.useState(false)
+  /** Bumped only when the user submits a message (or retry) so the message column can scroll once—never on streaming tokens. */
+  const [scrollEpoch, setScrollEpoch] = React.useState(0)
+
+  const bumpScrollToLatest = React.useCallback(() => {
+    setScrollEpoch((n) => n + 1)
+  }, [])
 
   const workspaceAbortRef = React.useRef<AbortController | null>(null)
   /** Tracks which pending bubble the in-flight stream belongs to. */
@@ -94,13 +109,35 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
 
   const syncThreadToUrl = React.useCallback(
     (threadId: string) => {
-      const p = new URLSearchParams(searchParams.toString())
-      p.set("thread", threadId)
+      const raw =
+        typeof window !== "undefined" ? window.location.search : ""
+      const q = raw.startsWith("?") ? raw.slice(1) : raw
+      const p = new URLSearchParams(q)
+      if (threadId === LANDING_THREAD_ID) {
+        p.delete("thread")
+      } else {
+        p.set("thread", threadId)
+      }
       const qs = p.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
-    [pathname, router, searchParams],
+    [pathname, router],
   )
+
+  /** Clean `/` (no `?thread=`) maps to the in-memory landing row. */
+  React.useEffect(() => {
+    if (threadQuery) return
+    React.startTransition(() => {
+      setActiveThreadId(LANDING_THREAD_ID)
+      setMainView("chat")
+    })
+  }, [threadQuery])
+
+  /** Drop `?thread=thread-landing` so the landing stays a bare path. */
+  React.useEffect(() => {
+    if (threadQuery !== LANDING_THREAD_ID) return
+    syncThreadToUrl(LANDING_THREAD_ID)
+  }, [threadQuery, syncThreadToUrl])
 
   /**
    * Abort the in-flight stream (if any) and either retire the affected pending
@@ -158,16 +195,15 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
     [cancelInFlight, syncThreadToUrl],
   )
 
-  const threadParam = searchParams.get("thread")
   React.useEffect(() => {
-    if (!threadParam) return
-    if (archivedSet.has(threadParam)) return
-    if (!threads.some((t) => t.id === threadParam)) return
+    if (!threadQuery) return
+    if (archivedSet.has(threadQuery)) return
+    if (!threads.some((t) => t.id === threadQuery)) return
     React.startTransition(() => {
-      setActiveThreadId(threadParam)
+      setActiveThreadId(threadQuery)
       setMainView("chat")
     })
-  }, [threadParam, threads, archivedSet])
+  }, [threadQuery, threads, archivedSet])
 
   const onThreadPinDragStart = React.useCallback(() => {
     setThreadDragActive(true)
@@ -216,7 +252,11 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
     async (thread: Thread) => {
       const origin =
         typeof window !== "undefined" ? window.location.origin : ""
-      const url = `${origin}${pathname}?${new URLSearchParams({ thread: thread.id }).toString()}`
+      const path =
+        thread.id === LANDING_THREAD_ID
+          ? pathname
+          : `${pathname}?${new URLSearchParams({ thread: thread.id }).toString()}`
+      const url = `${origin}${path}`
       const text = `${thread.title}\n${url}`
       try {
         if (navigator.share) {
@@ -303,7 +343,11 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
     (threadId: string) => {
       const origin =
         typeof window !== "undefined" ? window.location.origin : ""
-      const url = `${origin}${pathname}?${new URLSearchParams({ thread: threadId }).toString()}`
+      const path =
+        threadId === LANDING_THREAD_ID
+          ? pathname
+          : `${pathname}?${new URLSearchParams({ thread: threadId }).toString()}`
+      const url = `${origin}${path}`
       window.open(url, "_blank", "noopener,noreferrer")
     },
     [pathname],
@@ -523,6 +567,8 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
       setSearchQuery("")
       syncThreadToUrl(id)
 
+      bumpScrollToLatest()
+
       void streamReply({
         threadId: id,
         pendingId,
@@ -532,13 +578,51 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
         heuristicTitle: title,
       })
     },
-    [cancelInFlight, modelId, setThreads, streamReply, syncThreadToUrl],
+    [bumpScrollToLatest, cancelInFlight, modelId, setThreads, streamReply, syncThreadToUrl],
   )
 
   const handleSend = React.useCallback(() => {
     const text = draft.trim()
     if (!text || !activeThreadId) return
     setDraft("")
+
+    cancelInFlight({
+      reason: "stopped",
+      message: "Stopped when you sent a new message.",
+    })
+
+    if (activeThreadId === LANDING_THREAD_ID) {
+      const id = crypto.randomUUID()
+      const userId = crypto.randomUUID()
+      const pendingId = crypto.randomUUID()
+      const userMsg: ChatMessage = {
+        id: userId,
+        type: "user",
+        content: text,
+      }
+      const pending: ChatMessage = { id: pendingId, type: "assistant-pending" }
+      const title = buildThreadTitleFromUserText(text)
+      const thread: Thread = {
+        id,
+        title,
+        messages: [userMsg, pending],
+      }
+      setThreads((prev) => [thread, ...prev])
+      setActiveThreadId(id)
+      syncThreadToUrl(id)
+
+      bumpScrollToLatest()
+
+      void streamReply({
+        threadId: id,
+        pendingId,
+        modelId,
+        messagesToSend: [userMsg],
+        isFirstExchange: true,
+        heuristicTitle: title,
+      })
+      return
+    }
 
     const userId = crypto.randomUUID()
     const pendingId = crypto.randomUUID()
@@ -548,11 +632,6 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
       content: text,
     }
     const pending: ChatMessage = { id: pendingId, type: "assistant-pending" }
-
-    cancelInFlight({
-      reason: "stopped",
-      message: "Stopped when you sent a new message.",
-    })
 
     const currentThread = threadsRef.current.find(
       (t) => t.id === activeThreadId,
@@ -568,6 +647,8 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
       appendMessagesToThread(prev, activeThreadId, userMsg, pending),
     )
 
+    bumpScrollToLatest()
+
     void streamReply({
       threadId: activeThreadId,
       pendingId,
@@ -579,11 +660,13 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
     })
   }, [
     activeThreadId,
+    bumpScrollToLatest,
     cancelInFlight,
     draft,
     modelId,
     setThreads,
     streamReply,
+    syncThreadToUrl,
   ])
 
   const stopStream = React.useCallback(() => {
@@ -627,6 +710,8 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
         ),
       )
 
+      bumpScrollToLatest()
+
       void streamReply({
         threadId,
         pendingId,
@@ -636,7 +721,7 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
         isFirstExchange: false,
       })
     },
-    [cancelInFlight, modelId, setThreads, streamReply],
+    [bumpScrollToLatest, cancelInFlight, modelId, setThreads, streamReply],
   )
 
   const onComposerKeyDown = React.useCallback(
@@ -725,6 +810,7 @@ export function useThreadWorkspace({ composerTextareaRef }: UseThreadWorkspaceOp
     handleSend,
     stopStream,
     streamInFlight,
+    scrollEpoch,
     retryFromError,
     onComposerKeyDown,
     canSendMessage,

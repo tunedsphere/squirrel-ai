@@ -52,10 +52,10 @@ export function ChatComposer({
   const onPrimaryAction = streamInFlight ? stopStream : handleSend
   const buttonDisabled = streamInFlight ? false : !canSendMessage
   return (
-    <div className="relative z-10 shrink-0 bg-background px-4 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-4">
-      <div className="mx-auto w-full max-w-2xl rounded-2xl bg-muted p-1 sm:p-1.5">
+    <div className="relative z-10 shrink-0 bg-transparent px-4 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-4">
+      <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 dark:bg-muted/72 sm:p-1.5">
         <div
-          className="mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 sm:px-4 sm:py-3"
+          className="mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 dark:bg-background/84 sm:px-4 sm:py-3"
           onPointerDown={(e) => {
             const el = e.target as HTMLElement
             if (
@@ -74,7 +74,7 @@ export function ChatComposer({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onComposerKeyDown}
-              placeholder="Message…"
+              placeholder="Type your message here...."
               rows={2}
               className={cn(
                 "min-h-14 flex-1 resize-none border-0 bg-transparent px-0 py-1.5 text-base shadow-none sm:min-h-[3.25rem]",
@@ -82,7 +82,7 @@ export function ChatComposer({
                 "placeholder:text-muted-foreground md:text-sm",
                 "dark:bg-transparent disabled:opacity-50",
               )}
-              aria-label="Message"
+              aria-label="Type your message here"
             />
             <div className="mt-auto flex items-end justify-between gap-3 pt-1">
               <Select

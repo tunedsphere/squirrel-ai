@@ -126,7 +126,7 @@ export function EmptyChatStarters({
 
       <div
         className={cn(
-          "mt-10 mx-auto w-full max-w-2xl rounded-2xl bg-muted p-1 ring-1 ring-inset ring-primary/15 sm:p-1.5 dark:ring-primary/10",
+          "mt-10 mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 ring-1 ring-inset ring-primary/15 sm:p-1.5 dark:ring-primary/10",
         )}
         role="tabpanel"
         aria-labelledby={`starter-theme-${theme}`}

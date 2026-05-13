@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import {
   BASE_PROMPT,
+  DEFAULT_SYSTEM_CORE,
   MODEL_PROMPT_OVERRIDES,
+  RESPONSE_FORMAT_PROMPT,
   TIER_PROMPT_ADDITIONS,
   buildSystemPrompt,
 } from "@/lib/llm-prompts"
@@ -23,7 +25,7 @@ describe("buildSystemPrompt", () => {
       modelId: "gemini-flash",
       tier: "anonymous",
     })
-    expect(out).toBe(BASE_PROMPT)
+    expect(out).toBe(DEFAULT_SYSTEM_CORE)
   })
 
   it("appends per-model overrides under the base", () => {
@@ -33,7 +35,7 @@ describe("buildSystemPrompt", () => {
       modelId: "kimi-k2",
       tier: "anonymous",
     })
-    expect(out).toBe(`${BASE_PROMPT}\n\nBe extra concise.`)
+    expect(out).toBe(`${DEFAULT_SYSTEM_CORE}\n\nBe extra concise.`)
   })
 
   it("appends per-tier additions", () => {
@@ -43,7 +45,7 @@ describe("buildSystemPrompt", () => {
       modelId: "gemini-flash",
       tier: "premium",
     })
-    expect(out).toBe(`${BASE_PROMPT}\n\nYou may use tool calls.`)
+    expect(out).toBe(`${DEFAULT_SYSTEM_CORE}\n\nYou may use tool calls.`)
   })
 
   it("composes base + model + tier in order", () => {
@@ -56,6 +58,7 @@ describe("buildSystemPrompt", () => {
     })
     expect(out.split("\n\n")).toEqual([
       BASE_PROMPT,
+      RESPONSE_FORMAT_PROMPT,
       "Prefer step-by-step reasoning.",
       "Reply in the user's language.",
     ])
@@ -78,6 +81,6 @@ describe("buildSystemPrompt", () => {
       modelId: "gemini-flash",
       tier: "anonymous",
     })
-    expect(out).toBe(BASE_PROMPT)
+    expect(out).toBe(DEFAULT_SYSTEM_CORE)
   })
 })

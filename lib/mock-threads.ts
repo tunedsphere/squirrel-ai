@@ -6,9 +6,14 @@ const mk = (
   messages: Thread["messages"] = []
 ): Thread => ({ id, title, messages })
 
+/** Default empty thread synced into the URL when `?thread=` is missing. */
+export const LANDING_THREAD_ID = "thread-landing"
+
 /** Seed threads for the UI shell (no persistence). */
 export function initialThreads(): Thread[] {
   return [
+    /** First row is the default active thread — empty so the landing matches "New chat". */
+    mk(LANDING_THREAD_ID, "New chat", []),
     mk("thread-welcome", "Welcome to Squirrel Chat", [
       {
         id: "m1",

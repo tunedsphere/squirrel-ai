@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 
 import { ChatComposer } from "@/components/chat/shell/chat-composer";
 import { ChatLibraryPane } from "@/components/chat/shell/chat-library-pane";
@@ -14,23 +15,35 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useThreadWorkspace } from "@/hooks/use-thread-workspace";
+import { cn } from "@/lib/utils";
 
 export function ChatShell() {
   return (
     <SidebarProvider defaultOpen>
-      <React.Suspense fallback={null}>
-        <ChatShellBody />
+      <React.Suspense fallback={<ChatShellSuspenseFallback />}>
+        <ChatShellInner />
       </React.Suspense>
     </SidebarProvider>
   );
 }
 
-function ChatShellBody() {
+function ChatShellSuspenseFallback() {
+  return (
+    <div className="bg-background flex h-svh w-full items-center justify-center">
+      <p className="text-muted-foreground text-sm">Loading workspace…</p>
+    </div>
+  );
+}
+
+function ChatShellInner() {
   const { state, isMobile } = useSidebar();
   const sidebarCollapsed = !isMobile && state === "collapsed";
 
+  const searchParams = useSearchParams();
+  const threadQuery = searchParams.get("thread");
+
   const composerTextareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const workspace = useThreadWorkspace({ composerTextareaRef });
+  const workspace = useThreadWorkspace({ composerTextareaRef, threadQuery });
 
   const {
     threads,
@@ -70,6 +83,7 @@ function ChatShellBody() {
     handleSend,
     stopStream,
     streamInFlight,
+    scrollEpoch,
     retryFromError,
     onComposerKeyDown,
     canSendMessage,
@@ -106,7 +120,12 @@ function ChatShellBody() {
       <SidebarInset className="flex max-h-svh min-h-0 flex-1 flex-col overflow-hidden">
         <ChatMainHeader mainView={mainView} setMainView={setMainView} />
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            mainView === "chat" && "chat-content-grain",
+          )}
+        >
           {mainView === "library" ? (
             <ChatLibraryPane
               groups={libraryGroups}
@@ -121,6 +140,7 @@ function ChatShellBody() {
             <ChatMessageColumn
               activeThread={activeThread}
               isEmptyChat={isEmptyChat}
+              scrollEpoch={scrollEpoch}
               onPickPrompt={startNewChatWithFirstMessage}
               onRetryMessage={retryFromError}
             />
