@@ -43,7 +43,7 @@ const markdownComponents: Components = {
     }
     return (
       <code
-        className="rounded-md bg-muted/90 px-1.5 py-0.5 font-mono text-[0.85em] font-medium text-foreground dark:bg-muted/70"
+        className="rounded-md bg-muted/90 px-1.5 py-0.5 font-mono text-[0.85em] font-medium text-foreground/90 dark:bg-muted/70 dark:text-foreground/80"
         {...props}
       >
         {children}
@@ -52,7 +52,7 @@ const markdownComponents: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="not-prose my-4 border-l-[3px] border-primary/45 py-1 ps-5 text-[0.98em] text-foreground/90 italic leading-[1.75]">
+      <blockquote className="not-prose my-4 border-l-[3px] border-primary/40 py-1 ps-5 text-[0.98em] text-foreground/80 italic leading-[1.75] dark:text-foreground/72">
         {children}
       </blockquote>
     )
@@ -80,7 +80,7 @@ const markdownComponents: Components = {
   },
   th({ children }) {
     return (
-      <th className="px-3 py-2.5 font-semibold text-foreground first:rounded-tl-lg last:rounded-tr-lg">
+      <th className="px-3 py-2.5 font-semibold text-foreground/90 first:rounded-tl-lg last:rounded-tr-lg dark:text-foreground/82">
         {children}
       </th>
     )
@@ -105,18 +105,18 @@ export function AssistantMarkdown({
   return (
     <div
       className={cn(
-        "prose prose-neutral max-w-none text-foreground antialiased",
+        "prose prose-neutral max-w-none text-foreground/88 antialiased dark:text-foreground/76",
         "prose-p:mb-4 prose-p:text-base prose-p:leading-[1.75] prose-p:first-of-type:text-pretty prose-p:last:mb-0",
-        "prose-headings:scroll-mt-4 prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground",
+        "prose-headings:scroll-mt-4 prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground/92 dark:prose-headings:text-foreground/84",
         "prose-h2:mb-3 prose-h2:mt-8 prose-h2:border-b prose-h2:border-border/70 prose-h2:pb-2 prose-h2:text-lg first:prose-h2:mt-0",
         "prose-h3:mb-2 prose-h3:mt-6 prose-h3:text-base",
-        "prose-strong:font-semibold prose-strong:text-foreground",
+        "prose-strong:font-semibold prose-strong:text-foreground/94 dark:prose-strong:text-foreground/86",
         "prose-ul:my-4 prose-ul:ps-5 prose-ol:my-4 prose-ol:ps-6",
-        "prose-li:my-2 prose-li:leading-[1.75] prose-li:marker:font-medium prose-li:marker:text-primary/65",
+        "prose-li:my-2 prose-li:leading-[1.75] prose-li:marker:font-medium prose-li:marker:text-primary/55",
         /* Links: base layer; custom <a> adds underline */
         "prose-a:text-primary prose-a:font-medium",
         "prose-img:my-4 prose-img:rounded-lg prose-img:border prose-img:border-border/60 prose-img:shadow-sm",
-        "dark:prose-invert dark:prose-strong:text-foreground",
+        "dark:prose-invert dark:prose-strong:text-foreground/86",
         className,
       )}
     >

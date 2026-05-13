@@ -586,10 +586,93 @@
   }
 }
 
+@layer utilities {
+  @keyframes mic-recording {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.06);
+      opacity: 0.88;
+    }
+  }
+
+  .animate-mic-recording {
+    animation: mic-recording 1.75s ease-in-out infinite;
+  }
+
+  @keyframes voice-waveform-bar {
+    0%,
+    100% {
+      transform: scaleY(0.22);
+    }
+    20% {
+      transform: scaleY(0.55);
+    }
+    40% {
+      transform: scaleY(0.95);
+    }
+    55% {
+      transform: scaleY(0.35);
+    }
+    70% {
+      transform: scaleY(0.78);
+    }
+    85% {
+      transform: scaleY(0.42);
+    }
+  }
+
+  .animate-voice-waveform-bar {
+    transform-origin: center center;
+    animation: voice-waveform-bar 0.85s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-mic-recording {
+      animation: none;
+    }
+
+    .animate-voice-waveform-bar {
+      animation: none;
+      transform: scaleY(0.45);
+      transform-origin: center center;
+    }
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 42%, transparent)
+      transparent;
   }
+
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--muted-foreground) 62%, transparent);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

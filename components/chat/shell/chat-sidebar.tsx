@@ -4,7 +4,7 @@ import * as React from "react"
 import { MessageSquare, Squirrel } from "lucide-react"
 
 import { HistoryThreadContextMenu } from "@/components/chat/history-thread-context-menu"
-import { PinTabStrip, setPinThreadDragPreview } from "@/components/chat/pin-tab-strip"
+import { PinTabStrip } from "@/components/chat/pin-tab-strip"
 import { CollapsibleSearch } from "@/components/chat/shell/collapsible-search"
 import { NewChatCta } from "@/components/chat/shell/new-chat-cta"
 import { SidebarLoginButton } from "@/components/chat/shell/sidebar-login-button"
@@ -24,6 +24,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { MAX_PINS, THREAD_DRAG_MIME } from "@/lib/chat-constants"
+import { setPinThreadDragPreview } from "@/lib/chat-dnd"
 import type { Thread } from "@/lib/chat-types"
 import { cn } from "@/lib/utils"
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Nut, Send, Square } from "lucide-react";
+import { ArrowUp, Mic, Nut, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,12 +19,39 @@ import {
 } from "@/components/ui/tooltip";
 import type { ModelId } from "@/lib/mock-threads";
 import { getModelMeta, MODELS } from "@/lib/mock-threads";
+import { useSpeechDictation } from "@/hooks/use-speech-dictation";
 import { cn } from "@/lib/utils";
 
 function modelStatusDotClass(available: boolean) {
   return cn(
     "size-1.5 shrink-0 rounded-full",
     available ? "bg-emerald-500" : "bg-muted-foreground/45",
+  );
+}
+
+const WAVE_BAR_COUNT = 11;
+
+function VoiceWaveform({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-center gap-0.5 sm:gap-1",
+        className,
+      )}
+      aria-hidden
+    >
+      {Array.from({ length: WAVE_BAR_COUNT }, (_, i) => (
+        <span
+          key={i}
+          className="bg-foreground/22 dark:bg-foreground/30 animate-voice-waveform-bar w-[3px] shrink-0 rounded-full sm:w-1"
+          style={{
+            height: "1.95rem",
+            animationDelay: `${i * 65}ms`,
+            animationDuration: `${0.52 + (i % 4) * 0.09}s`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -40,6 +67,7 @@ export type ChatComposerProps = {
   sendButtonTooltip: string;
   streamInFlight: boolean;
   stopStream: () => void;
+  canDictate: boolean;
 };
 
 export function ChatComposer({
@@ -54,21 +82,67 @@ export function ChatComposer({
   sendButtonTooltip,
   streamInFlight,
   stopStream,
+  canDictate,
 }: ChatComposerProps) {
-  const buttonLabel = streamInFlight ? "Stop reply" : sendButtonTooltip;
-  const onPrimaryAction = streamInFlight ? stopStream : handleSend;
-  const buttonDisabled = streamInFlight ? false : !canSendMessage;
+  const speech = useSpeechDictation({ setDraft, streamInFlight });
+  const draftEmpty = draft.trim().length === 0;
+  const showVoiceStrip = speech.listening && !streamInFlight;
+  const canShowStartMic =
+    !streamInFlight &&
+    speech.supported &&
+    canDictate &&
+    draftEmpty &&
+    !speech.listening;
+  const showSend = !streamInFlight && !draftEmpty && !speech.listening;
+
+  const buttonLabel = streamInFlight
+    ? "Stop reply"
+    : speech.listening
+      ? "Stop recording"
+      : canShowStartMic
+        ? "Start voice input"
+        : sendButtonTooltip;
+  const onPrimaryAction = streamInFlight
+    ? stopStream
+    : speech.listening
+      ? speech.stop
+      : canShowStartMic
+        ? speech.start
+        : handleSend;
+  const buttonDisabled =
+    streamInFlight
+      ? false
+      : speech.listening
+        ? false
+        : canShowStartMic
+          ? false
+          : !canSendMessage;
   const currentModel = getModelMeta(modelId);
-  const [previewId, setPreviewId] = React.useState<ModelId>(modelId);
-  React.useEffect(() => {
-    setPreviewId(modelId);
-  }, [modelId]);
-  const preview = getModelMeta(previewId);
+  const [highlightedModelId, setHighlightedModelId] =
+    React.useState<ModelId>(modelId);
+  const preview = getModelMeta(highlightedModelId);
+
   return (
-    <div className="relative z-10 shrink-0 bg-transparent px-4 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-4">
+    <div className="relative z-10 shrink-0 bg-background px-4 pb-4 pt-3 dark:bg-transparent sm:px-6 sm:pb-5 sm:pt-4">
+      {showVoiceStrip ? (
+        <div
+          role="region"
+          aria-label="Voice input"
+          className="mx-auto mb-3 flex w-full max-w-3xl justify-center px-2"
+        >
+          <span className="sr-only" role="status" aria-live="polite">
+            Listening. Your speech is being converted to text below.
+          </span>
+          <VoiceWaveform />
+        </div>
+      ) : null}
       <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 dark:bg-muted/72 sm:p-1.5">
         <div
-          className="mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 dark:bg-background/84 sm:px-4 sm:py-3"
+          className={cn(
+            "mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 dark:bg-background/84 sm:px-4 sm:py-3",
+            speech.listening &&
+              "border-muted-foreground/20 ring-muted-foreground/15 ring-1",
+          )}
           onPointerDown={(e) => {
             const el = e.target as HTMLElement;
             if (
@@ -85,24 +159,45 @@ export function ChatComposer({
             <Textarea
               ref={composerTextareaRef}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                if (speech.listening) {
+                  speech.stop();
+                }
+                setDraft(e.target.value);
+              }}
               onKeyDown={onComposerKeyDown}
-              placeholder="Type your message here...."
+              placeholder={
+                speech.listening
+                  ? "Listening for your voice…"
+                  : "Type your message here...."
+              }
               rows={2}
+              autoComplete="off"
               className={cn(
-                "min-h-14 flex-1 resize-none border-0 bg-transparent px-0 py-1.5 text-base shadow-none sm:min-h-[3.25rem]",
+                "max-h-[240px] min-h-14 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-0 py-1.5 text-base shadow-none sm:min-h-[3.25rem]",
                 "outline-none ring-0 focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
                 "placeholder:text-muted-foreground md:text-sm",
                 "dark:bg-transparent disabled:opacity-50",
               )}
               aria-label="Type your message here"
             />
+            {!speech.listening &&
+            draft.trim().length > 0 &&
+            !streamInFlight &&
+            canSendMessage ? (
+              <p
+                className="text-muted-foreground mt-1.5 text-xs leading-snug"
+                id="composer-send-hint"
+              >
+                Send with the arrow or Enter when you’re ready.
+              </p>
+            ) : null}
             <div className="mt-auto flex items-end justify-between gap-3 pt-1">
               <Select
                 value={modelId}
                 onValueChange={(v) => setModelId(v as ModelId)}
                 onOpenChange={(open) => {
-                  if (open) setPreviewId(modelId);
+                  if (open) setHighlightedModelId(modelId);
                 }}
               >
                 <SelectTrigger
@@ -140,8 +235,8 @@ export function ChatComposer({
                       value={m.id}
                       disabled={m.status === "unavailable"}
                       className="pl-2"
-                      onPointerEnter={() => setPreviewId(m.id)}
-                      onFocus={() => setPreviewId(m.id)}
+                      onPointerEnter={() => setHighlightedModelId(m.id)}
+                      onFocus={() => setHighlightedModelId(m.id)}
                     >
                       <span className="flex items-center gap-2">
                         <span
@@ -181,16 +276,50 @@ export function ChatComposer({
                       type="button"
                       variant="ghost"
                       size="icon-lg"
-                      className="shrink-0 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
+                      className={cn(
+                        "shrink-0 disabled:pointer-events-none disabled:opacity-40",
+                        "hover:text-primary hover:bg-primary/[0.06] dark:hover:bg-primary/[0.09]",
+                        streamInFlight && "text-primary",
+                        speech.listening &&
+                          !streamInFlight &&
+                          "size-12 rounded-full border border-primary/30 bg-primary/[0.08] text-primary shadow-sm hover:border-primary/40 hover:bg-primary/[0.12] dark:bg-primary/[0.1] dark:hover:bg-primary/[0.14] [&_svg]:size-5",
+                        !streamInFlight &&
+                          !speech.listening &&
+                          "text-primary/85",
+                        !streamInFlight &&
+                          !speech.listening &&
+                          showSend &&
+                          canSendMessage &&
+                          "border-primary/25 hover:border-primary/35 dark:border-primary/30 dark:hover:border-primary/40 border",
+                      )}
                       onClick={onPrimaryAction}
                       disabled={buttonDisabled}
                       aria-label={buttonLabel}
+                      aria-describedby={
+                        draft.trim().length > 0 &&
+                        !streamInFlight &&
+                        !speech.listening &&
+                        canSendMessage
+                          ? "composer-send-hint"
+                          : undefined
+                      }
                       data-streaming={streamInFlight ? "true" : undefined}
+                      data-dictating={
+                        speech.listening ? "true" : undefined
+                      }
                     >
                       {streamInFlight ? (
                         <Square className="size-4 fill-current" aria-hidden />
+                      ) : speech.listening ? (
+                        <Square className="size-5 fill-current" aria-hidden />
+                      ) : canShowStartMic ? (
+                        <Mic className="size-4" strokeWidth={2.5} aria-hidden />
                       ) : (
-                        <Send className="size-4" aria-hidden />
+                        <ArrowUp
+                          className="size-4"
+                          strokeWidth={2.5}
+                          aria-hidden
+                        />
                       )}
                     </Button>
                   </span>
@@ -200,6 +329,22 @@ export function ChatComposer({
                 </TooltipContent>
               </Tooltip>
             </div>
+            {speech.errorMessage ? (
+              <p
+                className="text-destructive mt-2 text-xs"
+                role="status"
+                aria-live="polite"
+              >
+                {speech.errorMessage}{" "}
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground underline"
+                  onClick={() => speech.clearError()}
+                >
+                  Dismiss
+                </button>
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

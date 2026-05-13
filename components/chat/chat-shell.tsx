@@ -159,6 +159,7 @@ function ChatShellInner() {
               sendButtonTooltip={sendButtonTooltip}
               streamInFlight={streamInFlight}
               stopStream={stopStream}
+              canDictate={Boolean(activeThreadId) && !streamInFlight}
             />
           ) : null}
         </div>

@@ -106,6 +106,30 @@ export function buildThreadTitleFromUserText(trimmed: string): string {
   return collapsedTitle || "New chat"
 }
 
+/** First user message + pending assistant bubble for a brand-new thread. */
+export function newThreadWithFirstUserExchange(args: {
+  threadId: string
+  userMessageId: string
+  pendingMessageId: string
+  userText: string
+}): { thread: Thread; userMsg: ChatMessage; pendingId: string } {
+  const userMsg: ChatMessage = {
+    id: args.userMessageId,
+    type: "user",
+    content: args.userText,
+  }
+  const pending: ChatMessage = {
+    id: args.pendingMessageId,
+    type: "assistant-pending",
+  }
+  const title = buildThreadTitleFromUserText(args.userText)
+  return {
+    thread: { id: args.threadId, title, messages: [userMsg, pending] },
+    userMsg,
+    pendingId: args.pendingMessageId,
+  }
+}
+
 export function renameThreadTitle(
   threads: Thread[],
   threadId: string,

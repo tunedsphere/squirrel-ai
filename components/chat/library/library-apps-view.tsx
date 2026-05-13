@@ -24,7 +24,7 @@ import {
   THREAD_GROUP_DRAG_MIME,
   setPinDragPreviewFromElement,
   setPinThreadDragPreview,
-} from "@/components/chat/pin-tab-strip"
+} from "@/lib/chat-dnd"
 
 /** Prefer cloning the colored icon cell; otherwise initials chip. */
 function setLibraryPinDragPreview(

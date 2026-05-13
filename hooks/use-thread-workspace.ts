@@ -24,6 +24,7 @@ import {
   isValidLlmTitle,
   mergePinAllInGroup,
   mergeUnpinAllInGroup,
+  newThreadWithFirstUserExchange,
   nextActiveWhenArchivingCurrent,
   nextActiveWhenDeletingCurrent,
   renameThreadIfHeuristic,
@@ -32,6 +33,10 @@ import {
   replacePendingWithError,
   togglePinnedId,
 } from "@/lib/thread-workspace-logic"
+import {
+  applyThreadIdToSearchParams,
+  pathForThreadDeepLink,
+} from "@/lib/thread-url"
 import {
   downloadTextFile,
   printThreadAsPdf,
@@ -113,11 +118,7 @@ export function useThreadWorkspace({
         typeof window !== "undefined" ? window.location.search : ""
       const q = raw.startsWith("?") ? raw.slice(1) : raw
       const p = new URLSearchParams(q)
-      if (threadId === LANDING_THREAD_ID) {
-        p.delete("thread")
-      } else {
-        p.set("thread", threadId)
-      }
+      applyThreadIdToSearchParams(p, threadId, LANDING_THREAD_ID)
       const qs = p.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
@@ -252,10 +253,11 @@ export function useThreadWorkspace({
     async (thread: Thread) => {
       const origin =
         typeof window !== "undefined" ? window.location.origin : ""
-      const path =
-        thread.id === LANDING_THREAD_ID
-          ? pathname
-          : `${pathname}?${new URLSearchParams({ thread: thread.id }).toString()}`
+      const path = pathForThreadDeepLink(
+        pathname,
+        thread.id,
+        LANDING_THREAD_ID,
+      )
       const url = `${origin}${path}`
       const text = `${thread.title}\n${url}`
       try {
@@ -343,10 +345,11 @@ export function useThreadWorkspace({
     (threadId: string) => {
       const origin =
         typeof window !== "undefined" ? window.location.origin : ""
-      const path =
-        threadId === LANDING_THREAD_ID
-          ? pathname
-          : `${pathname}?${new URLSearchParams({ thread: threadId }).toString()}`
+      const path = pathForThreadDeepLink(
+        pathname,
+        threadId,
+        LANDING_THREAD_ID,
+      )
       const url = `${origin}${path}`
       window.open(url, "_blank", "noopener,noreferrer")
     },
@@ -541,19 +544,14 @@ export function useThreadWorkspace({
 
       const id = crypto.randomUUID()
       const userId = crypto.randomUUID()
-      const pendingId = crypto.randomUUID()
-      const userMsg: ChatMessage = {
-        id: userId,
-        type: "user",
-        content: trimmed,
-      }
-      const pending: ChatMessage = { id: pendingId, type: "assistant-pending" }
-      const title = buildThreadTitleFromUserText(trimmed)
-      const thread: Thread = {
-        id,
-        title,
-        messages: [userMsg, pending],
-      }
+      const pendingMessageId = crypto.randomUUID()
+      const { thread, userMsg, pendingId } = newThreadWithFirstUserExchange({
+        threadId: id,
+        userMessageId: userId,
+        pendingMessageId,
+        userText: trimmed,
+      })
+      const title = thread.title
 
       cancelInFlight({
         reason: "stopped",
@@ -594,19 +592,14 @@ export function useThreadWorkspace({
     if (activeThreadId === LANDING_THREAD_ID) {
       const id = crypto.randomUUID()
       const userId = crypto.randomUUID()
-      const pendingId = crypto.randomUUID()
-      const userMsg: ChatMessage = {
-        id: userId,
-        type: "user",
-        content: text,
-      }
-      const pending: ChatMessage = { id: pendingId, type: "assistant-pending" }
-      const title = buildThreadTitleFromUserText(text)
-      const thread: Thread = {
-        id,
-        title,
-        messages: [userMsg, pending],
-      }
+      const pendingMessageId = crypto.randomUUID()
+      const { thread, userMsg, pendingId } = newThreadWithFirstUserExchange({
+        threadId: id,
+        userMessageId: userId,
+        pendingMessageId,
+        userText: text,
+      })
+      const title = thread.title
       setThreads((prev) => [thread, ...prev])
       setActiveThreadId(id)
       syncThreadToUrl(id)

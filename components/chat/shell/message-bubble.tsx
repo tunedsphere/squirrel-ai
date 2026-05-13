@@ -18,7 +18,7 @@ const assistantBubbleSurface = cn(
 )
 
 const assistantBubbleTypography = cn(
-  "text-base leading-[1.7] text-foreground tracking-wide",
+  "text-base leading-[1.7] tracking-wide text-foreground/88 dark:text-foreground/76",
 )
 
 const assistantBubbleClass = cn(
