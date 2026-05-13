@@ -30,6 +30,12 @@ export function ChatMessageColumn({
   scrollEpoch,
 }: ChatMessageColumnProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  /** Empty on server and while hydrating so SSR HTML matches first client paint; then apply enter motion. */
+  const enterChatMotion = React.useSyncExternalStore(
+    () => () => {},
+    () => MAIN_PANE_ENTER_CHAT,
+    () => "",
+  );
 
   /** Thread switch: one jump to the end when opening a thread that has messages (token updates do not retrigger). */
   React.useLayoutEffect(() => {
@@ -52,17 +58,14 @@ export function ChatMessageColumn({
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
-        className={cn(
-          "min-h-0 flex-1 overflow-y-auto scroll-smooth",
-          isEmptyChat && "flex flex-col",
-        )}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-smooth"
       >
         <div
           key={activeThread?.id ?? "no-thread"}
           className={cn(
             "mx-auto flex w-full max-w-3xl flex-col px-4 py-4 pb-44 sm:px-6 sm:py-5 sm:pb-48",
             isEmptyChat ? "min-h-0 flex-1 justify-center" : "gap-6 sm:gap-7",
-            MAIN_PANE_ENTER_CHAT,
+            enterChatMotion,
           )}
         >
           {!activeThread ? (

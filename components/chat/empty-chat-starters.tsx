@@ -73,11 +73,12 @@ export function EmptyChatStarters({
   const config = STARTER_THEMES[theme];
 
   return (
-    <section
+    <div
       className={cn(
         "flex w-full flex-col items-center px-1 py-6 text-center sm:py-10",
         className,
       )}
+      role="region"
       aria-label="Conversation starters"
     >
       <h2 className="text-balance text-xl font-medium tracking-tight text-foreground/95 sm:text-3xl">
@@ -161,6 +162,6 @@ export function EmptyChatStarters({
           </ul>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
