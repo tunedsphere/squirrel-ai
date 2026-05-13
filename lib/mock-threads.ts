@@ -57,18 +57,45 @@ export function initialThreads(): Thread[] {
   ]
 }
 
+export type ModelStatus = "available" | "unavailable"
+
 /**
  * Selectable models in the composer picker. Order is significant —
  * `MODELS[0]` is the default selected model on first load (currently
  * Gemini Flash, the cheapest and free-tier-friendly option).
  */
 export const MODELS = [
-  { id: "gemini-flash", label: "Gemini Flash" },
-  { id: "deepseek-chat", label: "DeepSeek V3" },
-  { id: "kimi-k2", label: "Kimi K2" },
+  {
+    id: "gemini-flash",
+    label: "Gemini Flash",
+    status: "available",
+    description:
+      "Fast Gemini flash model — low latency and a solid default for everyday chat.",
+  },
+  {
+    id: "deepseek-chat",
+    label: "DeepSeek V3",
+    status: "unavailable",
+    description:
+      "Temporarily unavailable in this build — Gemini Flash and Kimi K2 are supported.",
+  },
+  {
+    id: "kimi-k2",
+    label: "Kimi K2",
+    status: "available",
+    description:
+      "Moonshot Kimi K2 — strong reasoning and long-context performance.",
+  },
 ] as const
 
 export type ModelId = (typeof MODELS)[number]["id"]
+
+export function getModelMeta(id: ModelId): (typeof MODELS)[number] {
+  for (const m of MODELS) {
+    if (m.id === id) return m
+  }
+  return MODELS[0]
+}
 
 /** Narrow an arbitrary string to a known ModelId, or null. */
 export function asModelId(value: string): ModelId | null {

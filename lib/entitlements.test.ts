@@ -110,4 +110,12 @@ describe("clampModelForTier", () => {
   it("falls back to first allowed model when requested is blocked", () => {
     expect(clampModelForTier("kimi-k2", anon)).toBe("gemini-flash")
   })
+
+  it("falls back when requested is allowed but marked unavailable in catalog", () => {
+    const ent: Entitlements = {
+      ...anon,
+      allowedModelIds: ["deepseek-chat", "gemini-flash"],
+    }
+    expect(clampModelForTier("deepseek-chat", ent)).toBe("gemini-flash")
+  })
 })

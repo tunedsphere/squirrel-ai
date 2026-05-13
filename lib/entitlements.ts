@@ -1,4 +1,4 @@
-import { asModelId, MODELS, type ModelId } from "@/lib/mock-threads"
+import { asModelId, getModelMeta, MODELS, type ModelId } from "@/lib/mock-threads"
 
 export type Tier = "anonymous" | "free-signed-in" | "premium"
 
@@ -105,11 +105,25 @@ export function getEntitlements(req: Request): Entitlements {
   return getTierEntitlements("anonymous")
 }
 
-/** Clamp a requested model id to one the tier is allowed to use. */
 export function clampModelForTier(
   requested: ModelId,
   ent: Entitlements,
 ): ModelId {
-  if (ent.allowedModelIds.includes(requested)) return requested
-  return ent.allowedModelIds[0] ?? MODELS[0].id
+  const pickFirstAllowedAvailable = (): ModelId => {
+    for (const id of ent.allowedModelIds) {
+      if (getModelMeta(id).status === "available") return id
+    }
+    for (const m of MODELS) {
+      if (m.status === "available") return m.id
+    }
+    return MODELS[0].id
+  }
+
+  if (!ent.allowedModelIds.includes(requested)) {
+    return pickFirstAllowedAvailable()
+  }
+  if (getModelMeta(requested).status === "available") {
+    return requested
+  }
+  return pickFirstAllowedAvailable()
 }
