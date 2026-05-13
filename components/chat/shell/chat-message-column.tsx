@@ -86,12 +86,6 @@ export function ChatMessageColumn({
           )}
         </div>
       </div>
-      {activeThread && !isEmptyChat ? (
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-28 bg-gradient-to-t from-background from-[5%] via-background/55 via-[42%] to-transparent sm:h-32"
-          aria-hidden
-        />
-      ) : null}
     </div>
   );
 }

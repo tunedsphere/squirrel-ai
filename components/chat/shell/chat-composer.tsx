@@ -123,23 +123,28 @@ export function ChatComposer({
   const preview = getModelMeta(highlightedModelId);
 
   return (
-    <div className="relative z-10 shrink-0 bg-background px-4 pb-4 pt-3 dark:bg-transparent sm:px-6 sm:pb-5 sm:pt-4">
-      {showVoiceStrip ? (
-        <div
-          role="region"
-          aria-label="Voice input"
-          className="mx-auto mb-3 flex w-full max-w-3xl justify-center px-2"
-        >
-          <span className="sr-only" role="status" aria-live="polite">
-            Listening. Your speech is being converted to text below.
-          </span>
-          <VoiceWaveform />
-        </div>
-      ) : null}
-      <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 dark:bg-muted/72 sm:p-1.5">
+    <div className="relative z-10 -mt-16 shrink-0 bg-background px-4 pb-4 pt-3 sm:-mt-20 sm:px-6 sm:pb-5 sm:pt-4">
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-4 z-[1] h-[8.25rem] bg-[linear-gradient(180deg,transparent_0%,color-mix(in_oklch,var(--background)_70%,transparent)_4%,color-mix(in_oklch,var(--background)_96%,transparent)_11%,var(--background)_26%,var(--background)_100%)] sm:-top-5 sm:h-[9.5rem]"
+        aria-hidden
+      />
+      <div className="relative z-[2]">
+        {showVoiceStrip ? (
+          <div
+            role="region"
+            aria-label="Voice input"
+            className="mx-auto mb-3 flex w-full max-w-3xl justify-center px-2"
+          >
+            <span className="sr-only" role="status" aria-live="polite">
+              Listening. Your speech is being converted to text below.
+            </span>
+            <VoiceWaveform />
+          </div>
+        ) : null}
+        <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 sm:p-1.5">
         <div
           className={cn(
-            "mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 dark:bg-background/84 sm:px-4 sm:py-3",
+            "mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 sm:px-4 sm:py-3",
             speech.listening &&
               "border-muted-foreground/20 ring-muted-foreground/15 ring-1",
           )}
@@ -280,6 +285,7 @@ export function ChatComposer({
                         "shrink-0 disabled:pointer-events-none disabled:opacity-40",
                         "hover:text-primary hover:bg-primary/[0.06] dark:hover:bg-primary/[0.09]",
                         streamInFlight && "text-primary",
+                        canShowStartMic && "rounded-full",
                         speech.listening &&
                           !streamInFlight &&
                           "size-12 rounded-full border border-primary/30 bg-primary/[0.08] text-primary shadow-sm hover:border-primary/40 hover:bg-primary/[0.12] dark:bg-primary/[0.1] dark:hover:bg-primary/[0.14] [&_svg]:size-5",
@@ -349,5 +355,6 @@ export function ChatComposer({
         </div>
       </div>
     </div>
+  </div>
   );
 }

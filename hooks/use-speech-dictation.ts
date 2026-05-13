@@ -52,6 +52,20 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+function speechSupportedSubscribe(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  queueMicrotask(onStoreChange);
+  return () => {};
+}
+
+function speechSupportedSnapshot() {
+  return getSpeechRecognitionCtor() !== null;
+}
+
+function speechSupportedServerSnapshot() {
+  return false;
+}
+
 export type UseSpeechDictationOptions = {
   setDraft: (v: string) => void;
   /** When true, recognition is stopped (e.g. assistant streaming). */
@@ -62,7 +76,11 @@ export function useSpeechDictation({
   setDraft,
   streamInFlight,
 }: UseSpeechDictationOptions) {
-  const supported = React.useMemo(() => getSpeechRecognitionCtor() !== null, []);
+  const supported = React.useSyncExternalStore(
+    speechSupportedSubscribe,
+    speechSupportedSnapshot,
+    speechSupportedServerSnapshot,
+  );
 
   const [listening, setListening] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -71,7 +89,7 @@ export function useSpeechDictation({
   const draftPrefixRef = React.useRef("");
   const finalSegmentRef = React.useRef("");
   const setDraftRef = React.useRef(setDraft);
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     setDraftRef.current = setDraft;
   }, [setDraft]);
 

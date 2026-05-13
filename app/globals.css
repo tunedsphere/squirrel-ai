@@ -190,6 +190,11 @@
 }
 
 @layer components {
+  /* One base under the noise layer so messages + composer read as the same surface */
+  .chat-content-grain {
+    background-color: var(--background);
+  }
+
   /* Subtle grain: main chat pane only (below header), dark mode; does not cover sidebar */
   .dark .chat-content-grain {
     position: relative;

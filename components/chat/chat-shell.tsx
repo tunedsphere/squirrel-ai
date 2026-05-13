@@ -137,31 +137,34 @@ function ChatShellInner() {
               onThreadDragEnd={onThreadPinDragEnd}
             />
           ) : (
-            <ChatMessageColumn
-              activeThread={activeThread}
-              isEmptyChat={isEmptyChat}
-              scrollEpoch={scrollEpoch}
-              onPickPrompt={startNewChatWithFirstMessage}
-              onRetryMessage={retryFromError}
-            />
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <ChatMessageColumn
+                activeThread={activeThread}
+                isEmptyChat={isEmptyChat}
+                scrollEpoch={scrollEpoch}
+                onPickPrompt={startNewChatWithFirstMessage}
+                onRetryMessage={retryFromError}
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-72 bg-gradient-to-t from-background from-[30%] via-background/97 via-[46%] to-transparent sm:h-[22rem]"
+                aria-hidden
+              />
+              <ChatComposer
+                composerTextareaRef={composerTextareaRef}
+                draft={draft}
+                setDraft={setDraft}
+                modelId={modelId}
+                setModelId={setModelId}
+                onComposerKeyDown={onComposerKeyDown}
+                handleSend={handleSend}
+                canSendMessage={canSendMessage}
+                sendButtonTooltip={sendButtonTooltip}
+                streamInFlight={streamInFlight}
+                stopStream={stopStream}
+                canDictate={Boolean(activeThreadId) && !streamInFlight}
+              />
+            </div>
           )}
-
-          {mainView === "chat" ? (
-            <ChatComposer
-              composerTextareaRef={composerTextareaRef}
-              draft={draft}
-              setDraft={setDraft}
-              modelId={modelId}
-              setModelId={setModelId}
-              onComposerKeyDown={onComposerKeyDown}
-              handleSend={handleSend}
-              canSendMessage={canSendMessage}
-              sendButtonTooltip={sendButtonTooltip}
-              streamInFlight={streamInFlight}
-              stopStream={stopStream}
-              canDictate={Boolean(activeThreadId) && !streamInFlight}
-            />
-          ) : null}
         </div>
       </SidebarInset>
 
