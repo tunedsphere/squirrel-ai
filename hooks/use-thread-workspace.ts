@@ -40,6 +40,8 @@ import {
   pathForThreadDeepLink,
 } from "@/lib/thread-url"
 import { threadToExportDraftMarkdown } from "@/lib/conversation-export-draft"
+import { downloadThreadNotesAsPdfFile } from "@/lib/thread-notes-export"
+import { emptyThreadNotesCanvasState } from "@/lib/thread-notes-types"
 import { loadExportSettings } from "@/lib/conversation-export-settings"
 import type { ConversationExportFormat } from "@/lib/conversation-export-settings"
 import {
@@ -96,6 +98,10 @@ export function useThreadWorkspace({
   >({})
   const [pendingExportClipsByThreadId, setPendingExportClipsByThreadId] =
     React.useState<Record<string, PendingExportClip[]>>({})
+
+  const [threadNotesTextById, setThreadNotesTextById] = React.useState<
+    Record<string, string>
+  >({})
 
   const [exportDialogSession, setExportDialogSession] = React.useState(0)
 
@@ -394,6 +400,11 @@ export function useThreadWorkspace({
     })
     setArchivedThreadIds((p) => p.filter((x) => x !== thread.id))
     setThreadPendingDelete(null)
+    setThreadNotesTextById((p) => {
+      const n = { ...p }
+      delete n[thread.id]
+      return n
+    })
   }, [cancelInFlight, threadPendingDelete, setThreads])
 
   const togglePinThread = React.useCallback((id: string) => {
@@ -928,6 +939,33 @@ export function useThreadWorkspace({
       ? "Message requires text to send"
       : "Send message"
 
+  const threadNotesText = activeThreadId
+    ? threadNotesTextById[activeThreadId] ?? ""
+    : ""
+
+  const setThreadNotesText = React.useCallback(
+    (value: React.SetStateAction<string>) => {
+      if (!activeThreadId) return
+      setThreadNotesTextById((prev) => {
+        const cur = prev[activeThreadId] ?? ""
+        const next =
+          typeof value === "function" ? (value as (s: string) => string)(cur) : value
+        return { ...prev, [activeThreadId]: next }
+      })
+    },
+    [activeThreadId],
+  )
+
+  const exportThreadNotesPdf = React.useCallback(async () => {
+    if (!activeThread) return
+    const text = threadNotesTextById[activeThread.id] ?? ""
+    await downloadThreadNotesAsPdfFile({
+      threadTitle: activeThread.title,
+      notesText: text,
+      canvasState: emptyThreadNotesCanvasState(),
+    })
+  }, [activeThread, threadNotesTextById])
+
   const newChat = React.useCallback(() => {
     if (isEmptyChat && activeThreadId) {
       setMainView("chat")
@@ -1022,5 +1060,8 @@ export function useThreadWorkspace({
     quizSessionKey,
     closeQuizSession,
     completeQuizSession,
+    threadNotesText,
+    setThreadNotesText,
+    exportThreadNotesPdf,
   }
 }

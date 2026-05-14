@@ -2,6 +2,7 @@ packages:
   - "."
 
 allowBuilds:
+  "@clerk/shared": true
   core-js: true
   msw: true
   sharp: true

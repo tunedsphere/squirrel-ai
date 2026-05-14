@@ -3,3 +3,7 @@ export const THREAD_DRAG_MIME = "application/x-ali-chat-thread"
 
 /** Maximum threads that can appear as compact pin tabs in the sidebar. */
 export const MAX_PINS = 8
+
+/** Dragging an inline image from a chat message into the thread notes panel. */
+export const THREAD_NOTES_IMAGE_DRAG_MIME =
+  "application/x-squirrel-thread-notes-image+json"

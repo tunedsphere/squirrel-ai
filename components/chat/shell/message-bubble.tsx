@@ -18,7 +18,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { ChatMessage } from "@/lib/chat-types"
+import type { ChatImageAttachment, ChatMessage } from "@/lib/chat-types"
+import { THREAD_NOTES_IMAGE_DRAG_MIME } from "@/lib/chat-constants"
 import { cn } from "@/lib/utils"
 
 const assistantBubbleSurface = cn(
@@ -134,9 +135,11 @@ function AssistantThinkingDots() {
 
 function UserMessageBubble({
   content,
+  attachments,
   exportClipDragEnabled,
 }: {
   content: string
+  attachments?: readonly ChatImageAttachment[]
   exportClipDragEnabled: boolean
 }) {
   const bubbleRef = React.useRef<HTMLDivElement>(null)
@@ -152,7 +155,30 @@ function UserMessageBubble({
             selectableMessageBubble,
           )}
         >
-          {content}
+          {attachments && attachments.length > 0 ? (
+            <div className="mb-2 flex flex-col gap-2 last:mb-0">
+              {attachments.map((a) => (
+                <img
+                  key={a.id}
+                  src={a.src}
+                  alt=""
+                  draggable
+                  className="max-h-52 w-full rounded-md border border-sidebar-border/80 object-contain"
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", a.src)
+                    e.dataTransfer.setData(
+                      THREAD_NOTES_IMAGE_DRAG_MIME,
+                      JSON.stringify({ src: a.src }),
+                    )
+                    e.dataTransfer.effectAllowed = "copy"
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+          {content ? (
+            <span className="whitespace-pre-wrap">{content}</span>
+          ) : null}
         </div>
         <ExportClipFloatingDragHandle
           bubbleRootRef={bubbleRef}
@@ -357,6 +383,7 @@ export function MessageBubble({
       return (
         <UserMessageBubble
           content={message.content}
+          attachments={message.attachments}
           exportClipDragEnabled={exportClipDragEnabled}
         />
       )

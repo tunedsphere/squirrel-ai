@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileCode, FileText, Presentation } from "lucide-react";
+import { FileCode, FileText, NotebookPen, Presentation } from "lucide-react";
 
 import {
   EXPORT_CLIP_DRAG_MIME,
@@ -110,6 +110,9 @@ export type ConversationExportDockProps = {
   onOpenPdfExport: () => void;
   onOpenPptxExport: () => void;
   onExportMarkdown: () => void;
+  /** Opens the thread notes side sheet (per-thread scratchpad). */
+  onOpenThreadNotes?: () => void;
+  threadNotesOpen?: boolean;
 };
 
 function consumeClipboardPaste(e: React.ClipboardEvent): ExportClipPayload | null {
@@ -161,6 +164,8 @@ export const ConversationExportDock = React.memo(function ConversationExportDock
   onOpenPdfExport,
   onOpenPptxExport,
   onExportMarkdown,
+  onOpenThreadNotes,
+  threadNotesOpen = false,
 }: ConversationExportDockProps) {
   const exportWorkspaceRef = React.useRef(exportWorkspaceActive);
   exportWorkspaceRef.current = exportWorkspaceActive;
@@ -188,8 +193,15 @@ export const ConversationExportDock = React.memo(function ConversationExportDock
   const collapseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const magRafRef = React.useRef<number | null>(null);
   const pendingPointerRef = React.useRef<{ x: number; y: number } | null>(null);
-  const scaleElsRef = React.useRef<(HTMLDivElement | null)[]>([null, null, null]);
-  const magSmoothedScalesRef = React.useRef<[number, number, number]>([1, 1, 1]);
+  const scaleElsRef = React.useRef<(HTMLDivElement | null)[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const magSmoothedScalesRef = React.useRef<[number, number, number, number]>([
+    1, 1, 1, 1,
+  ]);
   const clipDragSessionRef = React.useRef(false);
   const railHitZoneRef = React.useRef<HTMLDivElement | null>(null);
   const wasInRailStripDragRef = React.useRef(false);
@@ -234,7 +246,7 @@ export const ConversationExportDock = React.memo(function ConversationExportDock
   }, []);
 
   const resetMagnification = React.useCallback(() => {
-    magSmoothedScalesRef.current = [1, 1, 1];
+    magSmoothedScalesRef.current = [1, 1, 1, 1];
     for (let i = 0; i < scaleElsRef.current.length; i++) {
       const el = scaleElsRef.current[i];
       if (el) {
@@ -900,6 +912,54 @@ export const ConversationExportDock = React.memo(function ConversationExportDock
                     </button>
                   </div>
                 </div>
+
+                {onOpenThreadNotes ? (
+                  <div
+                    className={cn(
+                      "flex w-full shrink-0 items-center justify-center px-px",
+                      exportClipDragging
+                        ? "max-w-[4.875rem] py-2 sm:py-2"
+                        : "max-w-[4rem] py-[5px] sm:py-1.5",
+                    )}
+                  >
+                    <div ref={setScaler(3)}>
+                      <button
+                        type="button"
+                        tabIndex={stackOpen ? 0 : -1}
+                        aria-hidden={!stackOpen}
+                        onClick={onOpenThreadNotes}
+                        title={threadNotesOpen ? "Close thread notes" : "Open thread notes"}
+                        aria-label={
+                          threadNotesOpen
+                            ? "Close thread notes"
+                            : "Open thread notes"
+                        }
+                        className={cn(
+                          orbSecondary,
+                          exportClipDragging
+                            ? "!size-12 !max-h-12 !max-w-12 sm:!size-[3.25rem] sm:!max-h-[3.25rem] sm:!max-w-[3.25rem]"
+                            : null,
+                          "aspect-square cursor-pointer touch-manipulation",
+                          threadNotesOpen
+                            ? "border-primary/40 bg-muted/55 text-foreground/95"
+                            : "text-muted-foreground/90",
+                          "motion-safe:transition-[width,height,max-width,max-height,min-width,min-height] motion-safe:duration-200",
+                        )}
+                      >
+                        <NotebookPen
+                          className={cn(
+                            "pointer-events-none shrink-0",
+                            exportClipDragging
+                              ? "size-[1.05rem] sm:size-[1.12rem]"
+                              : "size-[0.94rem] sm:size-[1rem]",
+                          )}
+                          strokeWidth={1.65}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

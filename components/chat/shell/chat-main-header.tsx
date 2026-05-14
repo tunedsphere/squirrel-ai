@@ -2,6 +2,7 @@
 
 import { LayoutGrid, MessageSquare, PanelLeft, Squirrel } from "lucide-react";
 
+import { ChatClerkHeaderAuth } from "@/components/chat/shell/chat-clerk-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -109,7 +110,8 @@ export function ChatMainHeader({ mainView, setMainView }: ChatMainHeaderProps) {
           </button>
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-2">
+        <ChatClerkHeaderAuth />
         <ThemeToggle />
       </div>
     </header>

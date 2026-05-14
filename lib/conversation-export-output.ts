@@ -346,7 +346,7 @@ const PDF_A4_PORTRAIT_MM = { width: 210, height: 297 } as const
  * Pixel width matching A4 portrait printable width for symmetric side margins.
  * Stage the iframe at this width so layout matches the PDF inner column before rasterizing.
  */
-function pdfA4PortraitInnerWidthPx(sideMarginMm: number): number {
+export function pdfA4PortraitInnerWidthPx(sideMarginMm: number): number {
   const innerMm = Math.max(40, PDF_A4_PORTRAIT_MM.width - 2 * sideMarginMm)
   return Math.max(280, Math.floor(innerMm * (96 / 25.4)))
 }
@@ -493,6 +493,32 @@ async function rasterizeElementToPdfBlob(
   }
 
   return pdf.output("blob")
+}
+
+/**
+ * Raster PDF from an element staged in the host document (e.g. thread notes snapshot).
+ * Caller must attach/remove the element; raster uses the same pipeline as conversation export.
+ */
+export async function downloadHostElementAsRasterPdfFile(
+  element: HTMLElement,
+  opts: { fileBase: string; marginMm: number },
+): Promise<void> {
+  if (typeof document === "undefined") return
+
+  const blob = await rasterizeElementToPdfBlob(element, {
+    marginMm: opts.marginMm,
+    scale: Math.min(
+      Math.max(
+        typeof window !== "undefined" ? window.devicePixelRatio || 2 : 2,
+        2,
+      ),
+      3,
+    ),
+  })
+  const safe =
+    sanitizeFilename(stripExportMarkdownToPlain(opts.fileBase)) ||
+    sanitizeFilename("notes")
+  downloadBlob(`${safe}.pdf`, blob)
 }
 
 /** Opens a print dialog so the user can save as PDF (browser-dependent). */

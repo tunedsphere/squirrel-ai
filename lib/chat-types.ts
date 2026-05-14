@@ -33,8 +33,20 @@ export type QuizChatMessage = {
   scoreCorrect?: number
 }
 
+export type ChatImageAttachment = {
+  id: string
+  kind: "image"
+  /** `data:` URL or `https:` */
+  src: string
+}
+
 export type ChatMessage =
-  | { id: string; type: "user"; content: string }
+  | {
+      id: string
+      type: "user"
+      content: string
+      attachments?: readonly ChatImageAttachment[]
+    }
   | { id: string; type: "assistant"; content: string }
   | { id: string; type: "assistant-pending"; content?: string }
   | {

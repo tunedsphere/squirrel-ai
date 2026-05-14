@@ -19,6 +19,17 @@ export function initialThreads(): Thread[] {
         id: "m1",
         type: "user",
         content: "What can you help me with?",
+        attachments: [
+          {
+            id: "m1-img",
+            kind: "image",
+            src:
+              "data:image/svg+xml," +
+              encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect fill="#4f46e5" width="160" height="100" rx="10"/><text x="80" y="56" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="14">Diagram</text></svg>',
+              ),
+          },
+        ],
       },
       {
         id: "m2",

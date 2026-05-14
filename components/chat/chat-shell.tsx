@@ -10,9 +10,18 @@ import { ConversationExportDialog } from "@/components/chat/conversation-export-
 import { ConversationExportDock } from "@/components/chat/export/conversation-export-dock";
 import { ChatLibraryPane } from "@/components/chat/shell/chat-library-pane";
 import { ChatMainHeader } from "@/components/chat/shell/chat-main-header";
-import { ChatMessageColumn } from "@/components/chat/shell/chat-message-column";
+import {
+  ChatMessageColumn,
+  type ChatMessageScrollCoordinator,
+} from "@/components/chat/shell/chat-message-column";
 import { ChatSidebar } from "@/components/chat/shell/chat-sidebar";
 import { DeleteThreadDialog } from "@/components/chat/shell/delete-thread-dialog";
+import { ThreadNotesPane } from "@/components/chat/shell/thread-notes-pane";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import {
   SidebarInset,
   SidebarProvider,
@@ -28,6 +37,7 @@ import {
   stagingMarkdownMinimalExportShell,
 } from "@/lib/conversation-export-clip";
 import { cn } from "@/lib/utils";
+import { useDefaultLayout } from "react-resizable-panels";
 
 /** Collapse the nav sidebar (and close the mobile sheet) before opening export when the viewport is this narrow. */
 const EXPORT_SIDEBAR_AUTO_COLLAPSE_MAX_WIDTH_PX = 1180;
@@ -50,9 +60,19 @@ function ChatShellSuspenseFallback() {
   );
 }
 
+/** SSR-safe: `useDefaultLayout` touches Browser storage; avoid undefined (falls back to localStorage). */
+const notesLayoutStorageNoop: Pick<Storage, "getItem" | "setItem"> = {
+  getItem: () => null,
+  setItem: () => {},
+};
+
 function ChatShellInner() {
-  const { state, isMobile, setOpen: setSidebarOpen, setOpenMobile } =
-    useSidebar();
+  const {
+    state,
+    isMobile,
+    setOpen: setSidebarOpen,
+    setOpenMobile,
+  } = useSidebar();
   const sidebarCollapsed = !isMobile && state === "collapsed";
 
   const searchParams = useSearchParams();
@@ -125,6 +145,9 @@ function ChatShellInner() {
     quizSessionKey,
     closeQuizSession,
     completeQuizSession,
+    threadNotesText,
+    setThreadNotesText,
+    exportThreadNotesPdf,
   } = workspace;
 
   const openConversationExport = React.useCallback(
@@ -146,6 +169,70 @@ function ChatShellInner() {
     threadHasComposerExportableAssistantResponse(activeThread?.messages ?? []);
 
   const exportClipDragEnabled = mainView === "chat" && Boolean(activeThread);
+
+  const [notesStackVertical, setNotesStackVertical] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const fn = () => setNotesStackVertical(mq.matches);
+    fn();
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+
+  const [threadNotesOpen, setThreadNotesOpen] = React.useState(false);
+
+  const messageScrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  /** Set before toggling notes so remounted scroll container can restore offset after layout. */
+  const pendingMessageScrollTopRef = React.useRef<number | undefined>(
+    undefined,
+  );
+  const chatScrollCoordinatorRef =
+    React.useRef<ChatMessageScrollCoordinator>({
+      lastThreadId: undefined,
+      lastAppliedScrollEpoch: -1,
+    });
+
+  React.useEffect(() => {
+    if (mainView !== "chat") {
+      setThreadNotesOpen(false);
+    }
+  }, [mainView]);
+
+  const grabMessageScrollThen = React.useCallback((run: () => void) => {
+    const el = messageScrollContainerRef.current;
+    pendingMessageScrollTopRef.current = el?.scrollTop ?? 0;
+    run();
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const top = pendingMessageScrollTopRef.current;
+    if (top === undefined) return;
+    const el = messageScrollContainerRef.current;
+    if (el) el.scrollTop = top;
+    pendingMessageScrollTopRef.current = undefined;
+  }, [threadNotesOpen]);
+
+  const toggleThreadNotes = React.useCallback(() => {
+    grabMessageScrollThen(() => setThreadNotesOpen((open: boolean) => !open));
+  }, [grabMessageScrollThen]);
+
+  const closeThreadNotes = React.useCallback(() => {
+    grabMessageScrollThen(() => setThreadNotesOpen(false));
+  }, [grabMessageScrollThen]);
+
+  const [notesLayoutStorage, setNotesLayoutStorage] = React.useState<
+    Pick<Storage, "getItem" | "setItem">
+  >(() => notesLayoutStorageNoop);
+
+  React.useEffect(() => {
+    setNotesLayoutStorage(window.sessionStorage);
+  }, []);
+
+  const notesLayout = useDefaultLayout({
+    id: "squirrel-thread-notes-split",
+    panelIds: ["chat-pane", "notes-pane"],
+    storage: notesLayoutStorage,
+  });
 
   const handlePdfDockClip = React.useCallback(
     (payload: ExportClipPayload) => {
@@ -198,6 +285,57 @@ function ChatShellInner() {
     ],
   );
 
+  const chatMainColumn = (
+    <div className="@container/chat-pane relative flex min-h-0 w-full min-w-0 flex-1 flex-col [contain:inline-size]">
+      <ChatMessageColumn
+        activeThread={activeThread}
+        isEmptyChat={isEmptyChat}
+        scrollEpoch={scrollEpoch}
+        exportClipDragEnabled={exportClipDragEnabled}
+        messageScrollContainerRef={messageScrollContainerRef}
+        scrollCoordinatorRef={chatScrollCoordinatorRef}
+        onPickPrompt={startNewChatWithFirstMessage}
+        onRetryMessage={retryFromError}
+      />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-background from-[30%] via-background/97 via-[46%] to-transparent",
+          showComposerPlusActions
+            ? "h-[calc(18rem+3.5rem)] sm:h-[calc(22rem+3.5rem)]"
+            : "h-72 sm:h-[22rem]",
+        )}
+        aria-hidden
+      />
+      <ChatComposer
+        composerTextareaRef={composerTextareaRef}
+        draft={draft}
+        setDraft={setDraft}
+        modelId={modelId}
+        setModelId={setModelId}
+        onComposerKeyDown={onComposerKeyDown}
+        handleSend={handleSend}
+        canSendMessage={canSendMessage}
+        sendButtonTooltip={sendButtonTooltip}
+        streamInFlight={streamInFlight}
+        stopStream={stopStream}
+        canDictate={Boolean(activeThreadId) && !streamInFlight}
+        composerActions={
+          showComposerPlusActions && activeThread ? (
+            <ConversationComposerPlusActions
+              onExportPdf={() => openConversationExport(activeThread, "pdf")}
+              onExportPowerpoint={() =>
+                openConversationExport(activeThread, "pptx")
+              }
+              onExportMarkdown={() => exportThreadMarkdown(activeThread)}
+              onQuizMe={() => startQuizMe(activeThread)}
+              quizMeDisabled={streamInFlight || quizSession != null}
+            />
+          ) : undefined
+        }
+      />
+    </div>
+  );
+
   return (
     <>
       <ChatSidebar
@@ -246,56 +384,52 @@ function ChatShellInner() {
               onThreadDragStart={onThreadPinDragStart}
               onThreadDragEnd={onThreadPinDragEnd}
             />
-          ) : (
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              <ChatMessageColumn
-                activeThread={activeThread}
-                isEmptyChat={isEmptyChat}
-                scrollEpoch={scrollEpoch}
-                exportClipDragEnabled={exportClipDragEnabled}
-                onPickPrompt={startNewChatWithFirstMessage}
-                onRetryMessage={retryFromError}
-              />
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-background from-[30%] via-background/97 via-[46%] to-transparent",
-                  showComposerPlusActions
-                    ? "h-[calc(18rem+3.5rem)] sm:h-[calc(22rem+3.5rem)]"
-                    : "h-72 sm:h-[22rem]",
-                )}
-                aria-hidden
-              />
-              <ChatComposer
-                composerTextareaRef={composerTextareaRef}
-                draft={draft}
-                setDraft={setDraft}
-                modelId={modelId}
-                setModelId={setModelId}
-                onComposerKeyDown={onComposerKeyDown}
-                handleSend={handleSend}
-                canSendMessage={canSendMessage}
-                sendButtonTooltip={sendButtonTooltip}
-                streamInFlight={streamInFlight}
-                stopStream={stopStream}
-                canDictate={Boolean(activeThreadId) && !streamInFlight}
-                composerActions={
-                  showComposerPlusActions && activeThread ? (
-                    <ConversationComposerPlusActions
-                      onExportPdf={() =>
-                        openConversationExport(activeThread, "pdf")
-                      }
-                      onExportPowerpoint={() =>
-                        openConversationExport(activeThread, "pptx")
-                      }
-                      onExportMarkdown={() =>
-                        exportThreadMarkdown(activeThread)
-                      }
-                      onQuizMe={() => startQuizMe(activeThread)}
-                      quizMeDisabled={streamInFlight || quizSession != null}
-                    />
-                  ) : undefined
+          ) : threadNotesOpen ? (
+            <ResizablePanelGroup
+              id="squirrel-thread-notes-split"
+              orientation={notesStackVertical ? "vertical" : "horizontal"}
+              className="flex h-full min-h-0 w-full min-w-0 flex-1"
+              defaultLayout={
+                notesLayout.defaultLayout ?? {
+                  "chat-pane": 58,
+                  "notes-pane": 42,
                 }
-              />
+              }
+              onLayoutChanged={notesLayout.onLayoutChanged}
+            >
+              <ResizablePanel
+                id="chat-pane"
+                defaultSize="58%"
+                minSize="20%"
+                className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+              >
+                {chatMainColumn}
+              </ResizablePanel>
+              <ResizableHandle />
+              <ResizablePanel
+                id="notes-pane"
+                defaultSize="42%"
+                minSize={notesStackVertical ? "18%" : "22%"}
+                className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+              >
+                {activeThread ? (
+                  <ThreadNotesPane
+                    notesText={threadNotesText}
+                    onNotesTextChange={setThreadNotesText}
+                    onExportPdf={exportThreadNotesPdf}
+                    onClose={closeThreadNotes}
+                    className="h-full min-h-0"
+                  />
+                ) : (
+                  <div className="border-border bg-muted/15 text-muted-foreground flex min-h-[10rem] flex-1 items-center justify-center rounded-lg border border-dashed px-4 text-center text-sm">
+                    Select a thread to use notes.
+                  </div>
+                )}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+              {chatMainColumn}
             </div>
           )}
         </div>
@@ -333,6 +467,8 @@ function ChatShellInner() {
           onOpenPdfExport={() => openConversationExport(activeThread, "pdf")}
           onOpenPptxExport={() => openConversationExport(activeThread, "pptx")}
           onExportMarkdown={() => exportThreadMarkdown(activeThread)}
+          onOpenThreadNotes={toggleThreadNotes}
+          threadNotesOpen={threadNotesOpen}
         />
       ) : null}
 

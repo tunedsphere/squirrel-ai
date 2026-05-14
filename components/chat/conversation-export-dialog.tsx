@@ -791,18 +791,14 @@ export function ConversationExportDialog({
     <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogContent
         aria-describedby={undefined}
-        style={
-          desktopCenterX != null ? { left: desktopCenterX } : undefined
-        }
+        style={desktopCenterX != null ? { left: desktopCenterX } : undefined}
         className={cn(
           "flex min-h-0 max-h-[min(calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-3.75rem),52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,52rem)]",
           /* Top-anchored (no vertical re-center jump), with comfortable inset — not flush to the viewport top. */
           "bottom-auto translate-y-0 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+1.75rem))] sm:top-[min(7.5rem,16vh)]",
         )}
       >
-        <DialogHeader
-          className={cn("relative shrink-0 py-4", exportShellPadX)}
-        >
+        <DialogHeader className={cn("relative shrink-0 py-4", exportShellPadX)}>
           <DialogTitle className="text-center text-lg font-semibold tracking-tight px-12 sm:px-14">
             Export
           </DialogTitle>
@@ -888,9 +884,7 @@ export function ConversationExportDialog({
                               <button
                                 key={category}
                                 type="button"
-                                aria-current={
-                                  selectedCat ? "true" : undefined
-                                }
+                                aria-current={selectedCat ? "true" : undefined}
                                 onClick={() =>
                                   setActivePresetCategory(category)
                                 }

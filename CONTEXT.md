@@ -16,6 +16,10 @@ Short glossary for product terms and UI seams. Code layout: design primitives in
 
 **Thread workspace** — The hook + pure helpers that own thread list mutations, archive, pins, URL sync, and mock assistant resolution (`hooks/use-thread-workspace.ts`, `lib/thread-workspace-logic.ts`).
 
+**Thread notes** — Per-thread scratch text shown beside the chat when opened from the export dock (plain `textarea`; drag/paste from chat still works). State is in-memory with the rest of the workspace (see ADR 0001). **Not** the same as **staging markdown** or **clip staging** (those power the conversation→PDF/PPTX export dialog).
+
+**Notes canvas** — Reserved type for a future sketch layer; not exposed in the UI today. Thread-notes PDF export uses an empty canvas payload (text only).
+
 ## URL
 
 **`?thread=<threadId>`** — When present and the id matches a non-archived thread, the app opens **Chat** on that thread and keeps the query in sync when switching threads (`router.replace`, scroll disabled). Archived or unknown ids are ignored for deep-link activation.
