@@ -11,7 +11,7 @@ export function ExportPdfIframePreview({ html }: { html: string }) {
       title="PDF export preview"
       sandbox=""
       srcDoc={html}
-      className="min-h-0 min-w-0 w-full flex-1 rounded-none border-0 bg-transparent shadow-none outline-none"
+      className="relative z-0 min-h-0 min-w-0 w-full flex-1 rounded-none border-0 bg-transparent shadow-none outline-none"
     />
   );
 }

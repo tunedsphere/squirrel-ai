@@ -113,14 +113,13 @@ export function ChatComposer({
       : canShowStartMic
         ? speech.start
         : handleSend;
-  const buttonDisabled =
-    streamInFlight
+  const buttonDisabled = streamInFlight
+    ? false
+    : speech.listening
       ? false
-      : speech.listening
+      : canShowStartMic
         ? false
-        : canShowStartMic
-          ? false
-          : !canSendMessage;
+        : !canSendMessage;
   const currentModel = getModelMeta(modelId);
   const [highlightedModelId, setHighlightedModelId] =
     React.useState<ModelId>(modelId);
@@ -156,219 +155,221 @@ export function ChatComposer({
           </ComposerActionsScrollRow>
         ) : null}
         <div className="mx-auto w-full max-w-3xl rounded-2xl bg-muted p-1 sm:p-1.5">
-        <div
-          className={cn(
-            "mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 sm:px-4 sm:py-3",
-            speech.listening &&
-              "border-muted-foreground/20 ring-muted-foreground/15 ring-1",
-          )}
-          onPointerDown={(e) => {
-            const el = e.target as HTMLElement;
-            if (
-              el.closest("textarea") ||
-              el.closest("button") ||
-              el.closest("[data-slot=select-trigger]")
-            ) {
-              return;
-            }
-            composerTextareaRef.current?.focus();
-          }}
-        >
-          <div className="flex min-h-[4.75rem] flex-col">
-            <Textarea
-              ref={composerTextareaRef}
-              value={draft}
-              onChange={(e) => {
-                if (speech.listening) {
-                  speech.stop();
-                }
-                setDraft(e.target.value);
-              }}
-              onKeyDown={onComposerKeyDown}
-              placeholder={
-                speech.listening
-                  ? "Listening for your voice…"
-                  : "Type your message here...."
+          <div
+            className={cn(
+              "mx-auto w-full cursor-text rounded-xl border border-border bg-background px-3 py-2 sm:px-4 sm:py-3",
+              speech.listening &&
+                "border-muted-foreground/20 ring-muted-foreground/15 ring-1",
+            )}
+            onPointerDown={(e) => {
+              const el = e.target as HTMLElement;
+              if (
+                el.closest("textarea") ||
+                el.closest("button") ||
+                el.closest("[data-slot=select-trigger]")
+              ) {
+                return;
               }
-              rows={2}
-              autoComplete="off"
-              className={cn(
-                "max-h-[240px] min-h-14 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-0 py-1.5 text-base shadow-none sm:min-h-[3.25rem]",
-                "outline-none ring-0 focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
-                "placeholder:text-muted-foreground md:text-sm",
-                "dark:bg-transparent disabled:opacity-50",
-              )}
-              aria-label="Type your message here"
-            />
-            {!speech.listening &&
-            draft.trim().length > 0 &&
-            !streamInFlight &&
-            canSendMessage ? (
-              <p
-                className="text-muted-foreground mt-1.5 text-xs leading-snug"
-                id="composer-send-hint"
-              >
-                Send with the arrow or Enter when you’re ready.
-              </p>
-            ) : null}
-            <div className="mt-auto flex items-end justify-between gap-3 pt-1">
-              <Select
-                value={modelId}
-                onValueChange={(v) => setModelId(v as ModelId)}
-                onOpenChange={(open) => {
-                  if (open) setHighlightedModelId(modelId);
+              composerTextareaRef.current?.focus();
+            }}
+          >
+            <div className="flex min-h-[4.75rem] flex-col">
+              <Textarea
+                ref={composerTextareaRef}
+                value={draft}
+                onChange={(e) => {
+                  if (speech.listening) {
+                    speech.stop();
+                  }
+                  setDraft(e.target.value);
                 }}
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-auto w-fit min-w-0 max-w-[min(100%,16rem)] border-0 bg-transparent px-1 py-1 text-left text-xs text-muted-foreground shadow-none ring-0 hover:bg-muted/50 hover:text-foreground focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-muted/50 sm:max-w-[18rem] sm:text-sm"
+                onKeyDown={onComposerKeyDown}
+                placeholder={
+                  speech.listening
+                    ? "Listening for your voice…"
+                    : "Type your message here...."
+                }
+                rows={2}
+                autoComplete="off"
+                className={cn(
+                  "max-h-[240px] min-h-14 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-0 py-1.5 text-base shadow-none sm:min-h-[3.25rem]",
+                  "outline-none ring-0 focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
+                  "placeholder:text-muted-foreground md:text-sm",
+                  "dark:bg-transparent disabled:opacity-50",
+                )}
+                aria-label="Type your message here"
+              />
+              {!speech.listening &&
+              draft.trim().length > 0 &&
+              !streamInFlight &&
+              canSendMessage ? (
+                <p
+                  className="text-muted-foreground mt-1.5 text-xs leading-snug"
+                  id="composer-send-hint"
                 >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <Nut
-                      className="size-3.5 shrink-0 rotate-45 text-muted-foreground sm:size-4"
-                      aria-hidden
-                    />
-                    <span
-                      className={modelStatusDotClass(
-                        currentModel.status === "available",
-                      )}
-                      aria-hidden
-                    />
-                    <span className="sr-only">
-                      {currentModel.status === "available"
-                        ? "Available. "
-                        : "Unavailable. "}
-                    </span>
-                    <SelectValue placeholder="Model">
-                      {currentModel.label}
-                    </SelectValue>
-                  </span>
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  className="w-[var(--radix-select-trigger-width)] min-w-[12rem]"
+                  Send with the arrow or Enter when you’re ready.
+                </p>
+              ) : null}
+              <div className="mt-auto flex items-end justify-between gap-3 pt-1">
+                <Select
+                  value={modelId}
+                  onValueChange={(v) => setModelId(v as ModelId)}
+                  onOpenChange={(open) => {
+                    if (open) setHighlightedModelId(modelId);
+                  }}
                 >
-                  {MODELS.map((m) => (
-                    <SelectItem
-                      key={m.id}
-                      value={m.id}
-                      disabled={m.status === "unavailable"}
-                      className="pl-2"
-                      onPointerEnter={() => setHighlightedModelId(m.id)}
-                      onFocus={() => setHighlightedModelId(m.id)}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={modelStatusDotClass(
-                            m.status === "available",
-                          )}
-                          aria-hidden
-                        />
-                        <span className="sr-only">
-                          {m.status === "available"
-                            ? "Available. "
-                            : "Unavailable. "}
-                        </span>
-                        <span>{m.label}</span>
+                  <SelectTrigger
+                    size="sm"
+                    className="h-auto w-fit min-w-0 max-w-[min(100%,16rem)] border-0 bg-transparent px-1 py-1 text-left text-xs text-muted-foreground shadow-none ring-0 hover:bg-muted/50 hover:text-foreground focus-visible:border-transparent focus-visible:ring-0 data-[size=sm]:h-auto dark:bg-transparent dark:hover:bg-muted/50 sm:max-w-[18rem] sm:text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <Nut
+                        className="size-3.5 shrink-0 rotate-45 text-muted-foreground sm:size-4"
+                        aria-hidden
+                      />
+                      <span
+                        className={modelStatusDotClass(
+                          currentModel.status === "available",
+                        )}
+                        aria-hidden
+                      />
+                      <span className="sr-only">
+                        {currentModel.status === "available"
+                          ? "Available. "
+                          : "Unavailable. "}
                       </span>
-                    </SelectItem>
-                  ))}
-                  <div className="border-border border-t bg-muted/40 px-2.5 py-2 text-xs">
-                    <p className="font-medium text-foreground">
-                      {preview.label}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {preview.status === "available"
-                        ? "Available"
-                        : "Unavailable"}
-                    </p>
-                    <p className="mt-1 leading-snug text-muted-foreground">
-                      {preview.description}
-                    </p>
-                  </div>
-                </SelectContent>
-              </Select>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-lg"
-                      className={cn(
-                        "shrink-0 disabled:pointer-events-none disabled:opacity-40",
-                        "hover:text-primary hover:bg-primary/[0.06] dark:hover:bg-primary/[0.09]",
-                        streamInFlight && "text-primary",
-                        canShowStartMic && "rounded-full",
-                        speech.listening &&
+                      <SelectValue placeholder="Model">
+                        {currentModel.label}
+                      </SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    className="w-[var(--radix-select-trigger-width)] min-w-[12rem]"
+                  >
+                    {MODELS.map((m) => (
+                      <SelectItem
+                        key={m.id}
+                        value={m.id}
+                        disabled={m.status === "unavailable"}
+                        className="pl-2"
+                        onPointerEnter={() => setHighlightedModelId(m.id)}
+                        onFocus={() => setHighlightedModelId(m.id)}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={modelStatusDotClass(
+                              m.status === "available",
+                            )}
+                            aria-hidden
+                          />
+                          <span className="sr-only">
+                            {m.status === "available"
+                              ? "Available. "
+                              : "Unavailable. "}
+                          </span>
+                          <span>{m.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    <div className="border-border border-t bg-muted/40 px-2.5 py-2 text-xs">
+                      <p className="font-medium text-foreground">
+                        {preview.label}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {preview.status === "available"
+                          ? "Available"
+                          : "Unavailable"}
+                      </p>
+                      <p className="mt-1 leading-snug text-muted-foreground">
+                        {preview.description}
+                      </p>
+                    </div>
+                  </SelectContent>
+                </Select>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-lg"
+                        className={cn(
+                          "shrink-0 disabled:pointer-events-none disabled:opacity-40",
+                          "hover:text-primary hover:bg-primary/[0.06] dark:hover:bg-primary/[0.09]",
+                          streamInFlight && "text-primary",
+                          canShowStartMic && "rounded-full",
+                          speech.listening &&
+                            !streamInFlight &&
+                            "size-12 rounded-full border border-primary/30 bg-primary/[0.08] text-primary shadow-sm hover:border-primary/40 hover:bg-primary/[0.12] dark:bg-primary/[0.1] dark:hover:bg-primary/[0.14] [&_svg]:size-5",
                           !streamInFlight &&
-                          "size-12 rounded-full border border-primary/30 bg-primary/[0.08] text-primary shadow-sm hover:border-primary/40 hover:bg-primary/[0.12] dark:bg-primary/[0.1] dark:hover:bg-primary/[0.14] [&_svg]:size-5",
-                        !streamInFlight &&
+                            !speech.listening &&
+                            "text-primary/85",
+                          !streamInFlight &&
+                            !speech.listening &&
+                            showSend &&
+                            canSendMessage &&
+                            "border-primary/25 hover:border-primary/35 dark:border-primary/30 dark:hover:border-primary/40 border",
+                        )}
+                        onClick={onPrimaryAction}
+                        disabled={buttonDisabled}
+                        aria-label={buttonLabel}
+                        aria-describedby={
+                          draft.trim().length > 0 &&
+                          !streamInFlight &&
                           !speech.listening &&
-                          "text-primary/85",
-                        !streamInFlight &&
-                          !speech.listening &&
-                          showSend &&
-                          canSendMessage &&
-                          "border-primary/25 hover:border-primary/35 dark:border-primary/30 dark:hover:border-primary/40 border",
-                      )}
-                      onClick={onPrimaryAction}
-                      disabled={buttonDisabled}
-                      aria-label={buttonLabel}
-                      aria-describedby={
-                        draft.trim().length > 0 &&
-                        !streamInFlight &&
-                        !speech.listening &&
-                        canSendMessage
-                          ? "composer-send-hint"
-                          : undefined
-                      }
-                      data-streaming={streamInFlight ? "true" : undefined}
-                      data-dictating={
-                        speech.listening ? "true" : undefined
-                      }
-                    >
-                      {streamInFlight ? (
-                        <Square className="size-4 fill-current" aria-hidden />
-                      ) : speech.listening ? (
-                        <Square className="size-5 fill-current" aria-hidden />
-                      ) : canShowStartMic ? (
-                        <Mic className="size-4" strokeWidth={2.5} aria-hidden />
-                      ) : (
-                        <ArrowUp
-                          className="size-4"
-                          strokeWidth={2.5}
-                          aria-hidden
-                        />
-                      )}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  {buttonLabel}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            {speech.errorMessage ? (
-              <p
-                className="text-destructive mt-2 text-xs"
-                role="status"
-                aria-live="polite"
-              >
-                {speech.errorMessage}{" "}
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground underline"
-                  onClick={() => speech.clearError()}
+                          canSendMessage
+                            ? "composer-send-hint"
+                            : undefined
+                        }
+                        data-streaming={streamInFlight ? "true" : undefined}
+                        data-dictating={speech.listening ? "true" : undefined}
+                      >
+                        {streamInFlight ? (
+                          <Square className="size-4 fill-current" aria-hidden />
+                        ) : speech.listening ? (
+                          <Square className="size-5 fill-current" aria-hidden />
+                        ) : canShowStartMic ? (
+                          <Mic
+                            className="size-4"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                        ) : (
+                          <ArrowUp
+                            className="size-4"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6}>
+                    {buttonLabel}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              {speech.errorMessage ? (
+                <p
+                  className="text-destructive mt-2 text-xs"
+                  role="status"
+                  aria-live="polite"
                 >
-                  Dismiss
-                </button>
-              </p>
-            ) : null}
+                  {speech.errorMessage}{" "}
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground underline"
+                    onClick={() => speech.clearError()}
+                  >
+                    Dismiss
+                  </button>
+                </p>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
   );
 }

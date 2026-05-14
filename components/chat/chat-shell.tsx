@@ -7,7 +7,7 @@ import { QuizSessionDialog } from "@/components/chat/quiz";
 import { ConversationComposerPlusActions } from "@/components/chat/conversation-composer-plus-actions";
 import { ChatComposer } from "@/components/chat/shell/chat-composer";
 import { ConversationExportDialog } from "@/components/chat/conversation-export-dialog";
-import { PdfDockAction } from "@/components/chat/export/export-pdf-dock-action";
+import { ConversationExportDock } from "@/components/chat/export/conversation-export-dock";
 import { ChatLibraryPane } from "@/components/chat/shell/chat-library-pane";
 import { ChatMainHeader } from "@/components/chat/shell/chat-main-header";
 import { ChatMessageColumn } from "@/components/chat/shell/chat-message-column";
@@ -22,11 +22,15 @@ import { useThreadWorkspace } from "@/hooks/use-thread-workspace";
 import { threadHasComposerExportableAssistantResponse } from "@/lib/composer-export-eligibility";
 import type { ExportClipPayload } from "@/lib/conversation-export-clip";
 import {
-  appendExportClipToStagingMarkdown,
   insertExportClipAtGap,
-  stagingMarkdownForPdfSelectionPreview,
+  insertExportClipAtLastGap,
+  reorderExportStagingSlidesByIndex,
+  stagingMarkdownMinimalExportShell,
 } from "@/lib/conversation-export-clip";
 import { cn } from "@/lib/utils";
+
+/** Collapse the nav sidebar (and close the mobile sheet) before opening export when the viewport is this narrow. */
+const EXPORT_SIDEBAR_AUTO_COLLAPSE_MAX_WIDTH_PX = 1180;
 
 export function ChatShell() {
   return (
@@ -47,13 +51,15 @@ function ChatShellSuspenseFallback() {
 }
 
 function ChatShellInner() {
-  const { state, isMobile } = useSidebar();
+  const { state, isMobile, setOpen: setSidebarOpen, setOpenMobile } =
+    useSidebar();
   const sidebarCollapsed = !isMobile && state === "collapsed";
 
   const searchParams = useSearchParams();
   const threadQuery = searchParams.get("thread");
 
   const composerTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const chatInsetRef = React.useRef<HTMLElement | null>(null);
   const workspace = useThreadWorkspace({ composerTextareaRef, threadQuery });
 
   const {
@@ -89,7 +95,7 @@ function ChatShellInner() {
     togglePinThread,
     openThreadInNewTab,
     exportThreadMarkdown,
-    openConversationExport,
+    openConversationExport: openConversationExportBase,
     exportDialogOpen,
     exportDialogSession,
     onExportDialogOpenChange,
@@ -97,6 +103,12 @@ function ChatShellInner() {
     activeExportThread,
     conversationExportStaging,
     patchConversationExportStaging,
+    getExportStagingForThread,
+    conversationExportPendingClips,
+    enqueuePendingExportClipForThread,
+    placePendingExportClipAtGapForThread,
+    appendPendingExportClipForThread,
+    dismissPendingExportClipForThread,
     exportDialogThreadId,
     startNewChatWithFirstMessage,
     handleSend,
@@ -115,14 +127,25 @@ function ChatShellInner() {
     completeQuizSession,
   } = workspace;
 
+  const openConversationExport = React.useCallback(
+    (...args: Parameters<typeof openConversationExportBase>) => {
+      if (
+        typeof window !== "undefined" &&
+        window.innerWidth < EXPORT_SIDEBAR_AUTO_COLLAPSE_MAX_WIDTH_PX
+      ) {
+        setSidebarOpen(false);
+        setOpenMobile(false);
+      }
+      openConversationExportBase(...args);
+    },
+    [openConversationExportBase, setSidebarOpen, setOpenMobile],
+  );
+
   const showComposerPlusActions =
     Boolean(activeThread) &&
-    threadHasComposerExportableAssistantResponse(
-      activeThread?.messages ?? [],
-    );
+    threadHasComposerExportableAssistantResponse(activeThread?.messages ?? []);
 
-  const exportClipDragEnabled =
-    mainView === "chat" && Boolean(activeThread);
+  const exportClipDragEnabled = mainView === "chat" && Boolean(activeThread);
 
   const handlePdfDockClip = React.useCallback(
     (payload: ExportClipPayload) => {
@@ -136,18 +159,32 @@ function ChatShellInner() {
         exportConversationFormat === "pdf";
 
       if (pdfWorkspaceActive) {
-        patchConversationExportStaging(activeThread.id, (prev) =>
-          appendExportClipToStagingMarkdown(prev, payload),
-        );
+        enqueuePendingExportClipForThread(activeThread.id, {
+          role: payload.role,
+          excerpt: payload.excerpt,
+        });
+        return;
+      }
+
+      const priorStaging = getExportStagingForThread(activeThread.id);
+      const hasPriorStaging =
+        typeof priorStaging === "string" && priorStaging.trim() !== "";
+
+      if (hasPriorStaging) {
+        openConversationExport(activeThread, "pdf");
+        enqueuePendingExportClipForThread(activeThread.id, {
+          role: payload.role,
+          excerpt: payload.excerpt,
+        });
         return;
       }
 
       openConversationExport(activeThread, "pdf", {
-        stagingMarkdown: stagingMarkdownForPdfSelectionPreview(
-          activeThread.title,
-          excerpt,
-          payload.role,
-        ),
+        stagingMarkdown: stagingMarkdownMinimalExportShell(activeThread.title),
+      });
+      enqueuePendingExportClipForThread(activeThread.id, {
+        role: payload.role,
+        excerpt: payload.excerpt,
       });
     },
     [
@@ -155,7 +192,8 @@ function ChatShellInner() {
       exportDialogOpen,
       exportDialogThreadId,
       exportConversationFormat,
-      patchConversationExportStaging,
+      enqueuePendingExportClipForThread,
+      getExportStagingForThread,
       openConversationExport,
     ],
   );
@@ -186,7 +224,10 @@ function ChatShellInner() {
         openConversationExport={openConversationExport}
       />
 
-      <SidebarInset className="flex max-h-svh min-h-0 flex-1 flex-col overflow-hidden">
+      <SidebarInset
+        ref={chatInsetRef}
+        className="flex max-h-svh min-h-0 flex-1 flex-col overflow-hidden"
+      >
         <ChatMainHeader mainView={mainView} setMainView={setMainView} />
 
         <div
@@ -250,9 +291,7 @@ function ChatShellInner() {
                         exportThreadMarkdown(activeThread)
                       }
                       onQuizMe={() => startQuizMe(activeThread)}
-                      quizMeDisabled={
-                        streamInFlight || quizSession != null
-                      }
+                      quizMeDisabled={streamInFlight || quizSession != null}
                     />
                   ) : undefined
                 }
@@ -281,18 +320,25 @@ function ChatShellInner() {
       />
 
       {mainView === "chat" && activeThread ? (
-        <PdfDockAction
-          workspaceActive={
+        <ConversationExportDock
+          onPdfClip={handlePdfDockClip}
+          pdfStagingActive={
             exportDialogOpen &&
             exportDialogThreadId === activeThread.id &&
             exportConversationFormat === "pdf"
           }
-          onClip={handlePdfDockClip}
+          exportWorkspaceActive={
+            exportDialogOpen && exportDialogThreadId === activeThread.id
+          }
+          onOpenPdfExport={() => openConversationExport(activeThread, "pdf")}
+          onOpenPptxExport={() => openConversationExport(activeThread, "pptx")}
+          onExportMarkdown={() => exportThreadMarkdown(activeThread)}
         />
       ) : null}
 
       <ConversationExportDialog
         key={`export-${exportDialogSession}`}
+        desktopHorizontalAlignRef={chatInsetRef}
         thread={activeExportThread}
         open={exportDialogOpen}
         onOpenChange={onExportDialogOpenChange}
@@ -304,7 +350,48 @@ function ChatShellInner() {
                 patchConversationExportStaging(activeExportThread.id, (prev) =>
                   insertion?.kind === "gap"
                     ? insertExportClipAtGap(prev, insertion.gapIndex, payload)
-                    : appendExportClipToStagingMarkdown(prev, payload),
+                    : insertExportClipAtLastGap(prev, payload),
+                )
+            : undefined
+        }
+        onReorderExportSlides={
+          activeExportThread && exportConversationFormat === "pdf"
+            ? (fromIdx, toIdx) =>
+                patchConversationExportStaging(activeExportThread.id, (prev) =>
+                  reorderExportStagingSlidesByIndex(prev, fromIdx, toIdx),
+                )
+            : undefined
+        }
+        pendingExportClips={
+          activeExportThread && exportConversationFormat === "pdf"
+            ? conversationExportPendingClips
+            : []
+        }
+        onPlacePendingClipAtGap={
+          activeExportThread && exportConversationFormat === "pdf"
+            ? (pendingId, gapIndex) =>
+                placePendingExportClipAtGapForThread(
+                  activeExportThread.id,
+                  pendingId,
+                  gapIndex,
+                )
+            : undefined
+        }
+        onAppendPendingClip={
+          activeExportThread && exportConversationFormat === "pdf"
+            ? (pendingId) =>
+                appendPendingExportClipForThread(
+                  activeExportThread.id,
+                  pendingId,
+                )
+            : undefined
+        }
+        onDismissPendingClip={
+          activeExportThread && exportConversationFormat === "pdf"
+            ? (pendingId) =>
+                dismissPendingExportClipForThread(
+                  activeExportThread.id,
+                  pendingId,
                 )
             : undefined
         }

@@ -43,6 +43,12 @@ import { threadToExportDraftMarkdown } from "@/lib/conversation-export-draft"
 import { loadExportSettings } from "@/lib/conversation-export-settings"
 import type { ConversationExportFormat } from "@/lib/conversation-export-settings"
 import {
+  insertExportClipAtGap,
+  insertExportClipAtLastGap,
+  type PendingExportClip,
+  type ExportClipPayload,
+} from "@/lib/conversation-export-clip"
+import {
   downloadTextFile,
   sanitizeFilename,
   threadToMarkdown,
@@ -88,6 +94,8 @@ export function useThreadWorkspace({
   const [exportStagingByThreadId, setExportStagingByThreadId] = React.useState<
     Record<string, string>
   >({})
+  const [pendingExportClipsByThreadId, setPendingExportClipsByThreadId] =
+    React.useState<Record<string, PendingExportClip[]>>({})
 
   const [exportDialogSession, setExportDialogSession] = React.useState(0)
 
@@ -458,6 +466,87 @@ export function useThreadWorkspace({
         const cur = prev[threadId]
         if (cur === undefined) return prev
         return { ...prev, [threadId]: updater(cur) }
+      })
+    },
+    [],
+  )
+
+  const getExportStagingForThread = React.useCallback(
+    (threadId: string): string | undefined => exportStagingByThreadId[threadId],
+    [exportStagingByThreadId],
+  )
+
+  const conversationExportPendingClips = React.useMemo((): PendingExportClip[] => {
+    if (exportDialogThreadId == null) return []
+    return pendingExportClipsByThreadId[exportDialogThreadId] ?? []
+  }, [exportDialogThreadId, pendingExportClipsByThreadId])
+
+  const enqueuePendingExportClipForThread = React.useCallback(
+    (threadId: string, payload: ExportClipPayload) => {
+      const id = crypto.randomUUID()
+      setPendingExportClipsByThreadId((prev) => ({
+        ...prev,
+        [threadId]: [...(prev[threadId] ?? []), { id, ...payload }],
+      }))
+      return id
+    },
+    [],
+  )
+
+  const placePendingExportClipAtGapForThread = React.useCallback(
+    (threadId: string, pendingId: string, gapIndex: number) => {
+      const list = pendingExportClipsByThreadId[threadId]
+      const item = list?.find((c) => c.id === pendingId)
+      if (!item) return
+      const payload = { role: item.role, excerpt: item.excerpt }
+      patchConversationExportStaging(threadId, (md) =>
+        insertExportClipAtGap(md, gapIndex, payload),
+      )
+      setPendingExportClipsByThreadId((prev) => {
+        const cur = prev[threadId]
+        if (!cur) return prev
+        const nextList = cur.filter((c) => c.id !== pendingId)
+        const next = { ...prev }
+        if (nextList.length === 0) delete next[threadId]
+        else next[threadId] = nextList
+        return next
+      })
+    },
+    [pendingExportClipsByThreadId, patchConversationExportStaging],
+  )
+
+  const appendPendingExportClipForThread = React.useCallback(
+    (threadId: string, pendingId: string) => {
+      const list = pendingExportClipsByThreadId[threadId]
+      const item = list?.find((c) => c.id === pendingId)
+      if (!item) return
+      const payload = { role: item.role, excerpt: item.excerpt }
+      patchConversationExportStaging(threadId, (md) =>
+        insertExportClipAtLastGap(md, payload),
+      )
+      setPendingExportClipsByThreadId((prev) => {
+        const cur = prev[threadId]
+        if (!cur) return prev
+        const nextList = cur.filter((c) => c.id !== pendingId)
+        const next = { ...prev }
+        if (nextList.length === 0) delete next[threadId]
+        else next[threadId] = nextList
+        return next
+      })
+    },
+    [pendingExportClipsByThreadId, patchConversationExportStaging],
+  )
+
+  const dismissPendingExportClipForThread = React.useCallback(
+    (threadId: string, pendingId: string) => {
+      setPendingExportClipsByThreadId((prev) => {
+        const cur = prev[threadId]
+        if (!cur) return prev
+        const nextList = cur.filter((c) => c.id !== pendingId)
+        const next = { ...prev }
+        if (nextList.length === 0) delete next[threadId]
+        else next[threadId] = nextList
+        return next
       })
     },
     [],
@@ -911,6 +1000,12 @@ export function useThreadWorkspace({
     activeExportThread,
     conversationExportStaging,
     patchConversationExportStaging,
+    getExportStagingForThread,
+    conversationExportPendingClips,
+    enqueuePendingExportClipForThread,
+    placePendingExportClipAtGapForThread,
+    appendPendingExportClipForThread,
+    dismissPendingExportClipForThread,
     exportDialogThreadId,
     startNewChatWithFirstMessage,
     handleSend,

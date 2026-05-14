@@ -87,22 +87,27 @@ export function ChatSidebar(props: ChatSidebarProps) {
       <SidebarHeader className="border-b border-sidebar-border p-0">
         <div
           className={cn(
-            "relative flex min-h-10 items-center justify-center px-3 py-2",
-            "group-data-[collapsible=icon]:min-h-0 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2",
+            "grid min-h-10 grid-cols-[1fr_auto_1fr] items-center px-3 py-2",
+            "group-data-[collapsible=icon]:grid-cols-1 group-data-[collapsible=icon]:justify-items-center group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2",
           )}
         >
-          <div
-            className={cn(
-              "absolute start-3 top-1/2 z-10 -translate-y-1/2",
-              "group-data-[collapsible=icon]:static group-data-[collapsible=icon]:translate-y-0",
-            )}
-          >
+          <div className="justify-self-start group-data-[collapsible=icon]:justify-self-auto">
             <SidebarTrigger className="group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:min-h-8 group-data-[collapsible=icon]:min-w-8 group-data-[collapsible=icon]:shrink-0" />
           </div>
-          <span className="flex min-w-0 items-center justify-center gap-2 text-center font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            <Squirrel className="size-4 shrink-0 text-primary" aria-hidden />
-            <span className="truncate">Squirrel Chat</span>
+          <span
+            className={cn(
+              "max-w-[12rem] truncate px-1 text-center font-semibold tracking-tight sm:max-w-[14rem]",
+              "group-data-[collapsible=icon]:hidden",
+            )}
+          >
+            Squirrel Chat
           </span>
+          <div className="justify-self-end group-data-[collapsible=icon]:hidden">
+            <Squirrel
+              className="size-4 shrink-0 text-primary"
+              aria-hidden
+            />
+          </div>
         </div>
       </SidebarHeader>
 

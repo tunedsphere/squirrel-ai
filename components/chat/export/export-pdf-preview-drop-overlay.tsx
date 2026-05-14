@@ -3,76 +3,73 @@
 import * as React from "react";
 
 import {
-  exportClipPayloadFromDataTransfer,
+  consumeExportPdfGapDrop,
+  dataTransferAllowsPdfGapPlacement,
   type ExportClipPayload,
 } from "@/lib/conversation-export-clip";
 import { cn } from "@/lib/utils";
 
 export type ExportPdfPreviewDropOverlayProps = {
   gapCount: number;
+  placementDragHot: boolean;
   onGapClip: (gapIndex: number, payload: ExportClipPayload) => void;
+  onGapPendingClip?: (gapIndex: number, pendingId: string) => void;
 };
 
 function gapLabel(gapIndex: number, gapCount: number): string {
-  if (gapCount <= 1) return "Drop to insert";
-  if (gapIndex === 0) return "Before first section";
-  if (gapIndex === gapCount - 1) return "After last section";
-  return `Before section ${gapIndex + 1}`;
+  if (gapCount <= 1) return "Drop zone — add clip";
+  if (gapIndex === 0) return "Before first slide";
+  if (gapIndex === gapCount - 1) return "After last slide";
+  return `Before slide ${gapIndex + 1}`;
 }
 
 /**
- * Transparent column of drop bands over the PDF iframe. Uses hit-testing only while a system
- * drag is active so the iframe stays scrollable between drags.
+ * Column of bands over the iframe — active only while a qualifying clip drag is in flight
+ * so the preview stays scrollable/clicks reach the sheet between drags.
  */
 export function ExportPdfPreviewDropOverlay({
   gapCount,
+  placementDragHot,
   onGapClip,
+  onGapPendingClip,
 }: ExportPdfPreviewDropOverlayProps) {
-  const [dragActive, setDragActive] = React.useState(false);
   const [hoverGap, setHoverGap] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    const end = () => {
-      setDragActive(false);
-      setHoverGap(null);
-    };
-    window.addEventListener("dragend", end);
-    window.addEventListener("drop", end);
-    return () => {
-      window.removeEventListener("dragend", end);
-      window.removeEventListener("drop", end);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const start = () => setDragActive(true);
-    document.addEventListener("dragstart", start, true);
-    return () => document.removeEventListener("dragstart", start, true);
-  }, []);
+    if (!placementDragHot) setHoverGap(null);
+  }, [placementDragHot]);
 
   if (gapCount < 1) return null;
 
   return (
     <div
       className={cn(
-        "absolute inset-0 z-10 flex flex-col overflow-hidden rounded-[inherit]",
-        dragActive ? "pointer-events-auto cursor-copy" : "pointer-events-none",
+        "absolute inset-0 z-[36] flex flex-col overflow-y-auto rounded-[inherit]",
+        placementDragHot ? "pointer-events-auto cursor-copy" : "pointer-events-none",
       )}
-      aria-label="PDF preview drop zones"
+      aria-hidden={!placementDragHot}
+      aria-label={placementDragHot ? "PDF preview insertion zones" : undefined}
     >
       {Array.from({ length: gapCount }, (_, i) => (
         <div
           key={i}
           className={cn(
-            "flex min-h-[2.25rem] flex-1 flex-col justify-center border border-dashed border-transparent px-1.5 transition-colors",
-            dragActive && hoverGap === i && "border-primary/50 bg-primary/[0.07]",
+            "flex flex-[1_1_0] flex-col justify-center border border-dashed px-2 py-3 transition-[background-color,border-color]",
+            "min-h-[clamp(3rem,12vh,5rem)]",
+            placementDragHot
+              ? hoverGap === i
+                ? "border-primary bg-primary/[0.11] shadow-[inset_0_0_0_1px] shadow-primary/18"
+                : "border-primary/32 bg-primary/[0.045]"
+              : "border-transparent",
           )}
           onDragEnter={(e) => {
+            if (!placementDragHot || !dataTransferAllowsPdfGapPlacement(e.dataTransfer)) return;
             e.preventDefault();
             e.stopPropagation();
             setHoverGap(i);
           }}
           onDragOver={(e) => {
+            if (!placementDragHot || !dataTransferAllowsPdfGapPlacement(e.dataTransfer)) return;
             e.preventDefault();
             e.stopPropagation();
             e.dataTransfer.dropEffect = "copy";
@@ -84,26 +81,27 @@ export function ExportPdfPreviewDropOverlay({
             }
           }}
           onDrop={(e) => {
+            if (!placementDragHot || !dataTransferAllowsPdfGapPlacement(e.dataTransfer)) return;
             e.preventDefault();
             e.stopPropagation();
             setHoverGap(null);
-            const payload = exportClipPayloadFromDataTransfer(e.dataTransfer);
-            if (!payload) return;
-            const excerpt = payload.excerpt.trim();
-            if (!excerpt) return;
-            onGapClip(i, { role: payload.role, excerpt });
+            consumeExportPdfGapDrop(e.dataTransfer, i, {
+              onGapPendingClip,
+              onGapClip,
+            });
           }}
         >
           <span
             className={cn(
-              "select-none text-[10px] font-medium tracking-wide uppercase",
-              dragActive
-                ? "text-muted-foreground"
-                : "text-muted-foreground/0",
+              "select-none text-[10px] font-semibold tracking-wide uppercase",
+              placementDragHot ? "text-foreground/90" : "text-transparent",
             )}
           >
             {gapLabel(i, gapCount)}
           </span>
+          {placementDragHot ? (
+            <span className="text-primary mt-1 text-[10px] font-medium">Release to insert</span>
+          ) : null}
         </div>
       ))}
     </div>

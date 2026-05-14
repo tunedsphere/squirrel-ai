@@ -31,7 +31,9 @@ function BulletBlocks({
           />
           <div
             className="text-foreground/90 prose-export-slide min-w-0 flex-1 text-[13px] leading-relaxed sm:text-sm [&_.export-md-h]:text-foreground [&_.export-md-h]:tracking-tight [&_.export-md-h-deep]:font-semibold [&_.export-p:first-child]:mt-0 [&_p]:m-0"
-            dangerouslySetInnerHTML={{ __html: exportMarkdownLineToBlockHtml(line) }}
+            dangerouslySetInnerHTML={{
+              __html: exportMarkdownLineToBlockHtml(line),
+            }}
           />
         </div>
       ))}
@@ -72,7 +74,9 @@ function SlideCard({
   return (
     <div className={slideShell}>
       <div className="text-muted-foreground mb-2 flex items-baseline gap-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
-        <span className="text-indigo-700/90 dark:text-indigo-300/90">Slide</span>
+        <span className="text-indigo-700/90 dark:text-indigo-300/90">
+          Slide
+        </span>
         <span className="text-foreground/65 tabular-nums">
           {index} / {total}
         </span>
@@ -85,7 +89,10 @@ function SlideCard({
           }}
         />
       ) : null}
-      <BulletBlocks lines={items} dotClass="bg-slate-400/95 dark:bg-slate-500/90" />
+      <BulletBlocks
+        lines={items}
+        dotClass="bg-slate-400/95 dark:bg-slate-500/90"
+      />
     </div>
   );
 }
@@ -97,12 +104,15 @@ export type ExportSlidesPreviewProps = {
 /** Structural preview mirroring pptx slides — markdown-aware for body lines. */
 export function ExportSlidesPreview({ parsed }: ExportSlidesPreviewProps) {
   const hasContent =
-    parsed.preambleLines.length > 0 || parsed.slides.some((s) => s.title || s.bullets.length > 0);
+    parsed.preambleLines.length > 0 ||
+    parsed.slides.some((s) => s.title || s.bullets.length > 0);
 
   if (!hasContent) {
     return (
       <div className="text-muted-foreground flex min-h-[min(360px,48vh)] flex-col items-center justify-center rounded-xl border border-dashed border-border/90 bg-gradient-to-br from-muted/35 via-muted/15 to-muted/25 p-10 text-center text-sm shadow-inner sm:min-h-[min(400px,52vh)]">
-        <p className="text-foreground/90 mb-1 max-w-sm font-medium">Nothing to preview yet</p>
+        <p className="text-foreground/90 mb-1 max-w-sm font-medium">
+          Nothing to preview yet
+        </p>
         <p className="max-w-sm text-muted-foreground">
           Add headings and body text in Source to preview slides here.
         </p>

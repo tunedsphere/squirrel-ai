@@ -260,45 +260,6 @@
     flex-shrink: 0;
   }
 
-  /* PDF export clip: friendlier drag preview than default translucent selection ghost */
-  .export-clip-drag-preview {
-    box-sizing: border-box;
-    pointer-events: none;
-    user-select: none;
-    max-width: min(17rem, calc(100vw - 2rem));
-    padding: 0.5rem 0.65rem;
-    border-radius: var(--radius-xl);
-    background: color-mix(in oklch, var(--popover) 74%, transparent);
-    border: 1px dashed color-mix(in oklch, var(--primary) 45%, var(--border));
-    color: var(--foreground);
-    box-shadow:
-      0 8px 28px color-mix(in oklch, var(--foreground) 14%, transparent),
-      0 0 0 1px color-mix(in oklch, var(--border) 55%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-family: var(--font-sans);
-    text-align: left;
-  }
-
-  .export-clip-drag-preview__role {
-    display: block;
-    margin-bottom: 0.3rem;
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: color-mix(in oklch, var(--muted-foreground) 82%, var(--primary));
-    line-height: 1.2;
-  }
-
-  .export-clip-drag-preview__text {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    line-height: 1.42;
-    color: color-mix(in oklch, var(--foreground) 94%, transparent);
-  }
-
   :is(.glass, .glass-subtle, .glass-strong, .glass-glow, .glass-liquid) {
     transition:
       border-color 0.2s ease,
@@ -725,15 +686,341 @@
     @apply font-sans;
   }
 
-  /* During text / PDF clip HTML5 drag — keep grabbing cursor (sync class name with EXPORT_CLIP_DRAG_CURSOR_HTML_CLASS). */
-  html.export-clip-drag-cursor,
-  html.export-clip-drag-cursor * {
-    cursor: grabbing !important;
-  }
-
   /* Native selection highlight: theme primary tint (not system blue) */
   ::selection {
     background-color: color-mix(in oklch, var(--primary) 38%, var(--background));
     color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  /*
+   * Export dock mesh warp — right edge anchored (dock side compresses first);
+   * left side narrows via skew rotateY squash-and-stretch.
+   */
+
+  @keyframes dock-stack-collapse {
+    0% {
+      opacity: 1;
+      filter: brightness(1.02);
+      transform: translate3d(0, 0, 0) translateZ(0) scaleX(1) scaleY(1)
+        skewY(0deg) rotateY(0deg);
+    }
+    18% {
+      opacity: 0.99;
+      transform: translate3d(9px, 0, 0) scaleX(0.68) scaleY(1.1)
+        skewY(-5deg) rotateY(-6deg);
+    }
+    40% {
+      opacity: 0.92;
+      transform: translate3d(18px, 0.5px, 0) scaleX(0.32) scaleY(1.2)
+        skewY(-9deg) rotateY(-12deg);
+    }
+    62% {
+      opacity: 0.55;
+      transform: translate3d(26px, 1px, -2px) scaleX(0.12) scaleY(0.88)
+        skewY(-12deg) rotateY(-17deg);
+    }
+    84% {
+      opacity: 0.22;
+      transform: translate3d(32px, 2px, -4px) scaleX(0.06) scaleY(0.38)
+        skewY(-14deg) rotateY(-21deg);
+    }
+    100% {
+      opacity: 0;
+      filter: brightness(1);
+      transform: translate3d(38px, 3px, -6px) scaleX(0.03) scaleY(0.18)
+        skewY(-15deg) rotateY(-24deg);
+    }
+  }
+
+  @keyframes dock-stack-restore {
+    0% {
+      opacity: 0;
+      filter: brightness(1.06);
+      transform: translate3d(38px, 3px, -6px) scaleX(0.03) scaleY(0.18)
+        skewY(-15deg) rotateY(-24deg);
+    }
+    20% {
+      opacity: 0.35;
+      transform: translate3d(28px, 2px, -4px) scaleX(0.09) scaleY(0.55)
+        skewY(-12deg) rotateY(-18deg);
+    }
+    42% {
+      opacity: 0.88;
+      transform: translate3d(16px, 0.5px, -2px) scaleX(0.38) scaleY(1.16)
+        skewY(-7deg) rotateY(-11deg);
+    }
+    63% {
+      opacity: 0.97;
+      transform: translate3d(6px, 0, 0) scaleX(0.78) scaleY(1.1)
+        skewY(-2.5deg) rotateY(-4deg);
+    }
+    82% {
+      opacity: 1;
+      transform: translate3d(-3px, 0, 0) scaleX(1.06) scaleY(0.97)
+        skewY(0.8deg) rotateY(1.5deg);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+      transform: translate3d(0, 0, 0) scaleX(1) scaleY(1) skewY(0deg)
+        rotateY(0deg);
+    }
+  }
+
+  @keyframes dock-dots-follow-collapse {
+    0%,
+    45% {
+      opacity: 0;
+    }
+    70% {
+      opacity: 0.35;
+    }
+    100% {
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes dock-stack-collapse-strong {
+    0% {
+      opacity: 1;
+      filter: brightness(1.05);
+      transform: translate3d(0, 0, 0) scaleX(1) scaleY(1) skewY(0deg)
+        rotateY(0deg);
+    }
+    16% {
+      opacity: 0.98;
+      transform: translate3d(13px, 0, 0) scaleX(0.54) scaleY(1.2)
+        skewY(-8deg) rotateY(-11deg);
+    }
+    36% {
+      opacity: 0.84;
+      transform: translate3d(26px, 1px, -3px) scaleX(0.18) scaleY(1.32)
+        skewY(-14deg) rotateY(-20deg);
+    }
+    56% {
+      opacity: 0.48;
+      transform: translate3d(36px, 2px, -7px) scaleX(0.07) scaleY(0.82)
+        skewY(-18deg) rotateY(-27deg);
+    }
+    76% {
+      opacity: 0.12;
+      transform: translate3d(46px, 4px, -11px) scaleX(0.035) scaleY(0.28)
+        skewY(-21deg) rotateY(-31deg);
+    }
+    100% {
+      opacity: 0;
+      filter: brightness(1);
+      transform: translate3d(52px, 5px, -14px) scaleX(0.018) scaleY(0.1)
+        skewY(-23deg) rotateY(-34deg);
+    }
+  }
+
+  @keyframes dock-stack-restore-strong {
+    0% {
+      opacity: 0;
+      filter: brightness(1.14);
+      transform: translate3d(52px, 5px, -14px) scaleX(0.018) scaleY(0.1)
+        skewY(-23deg) rotateY(-34deg);
+    }
+    17% {
+      opacity: 0.38;
+      transform: translate3d(38px, 4px, -10px) scaleX(0.075) scaleY(0.64)
+        skewY(-17deg) rotateY(-26deg);
+    }
+    38% {
+      opacity: 0.9;
+      transform: translate3d(23px, 1px, -6px) scaleX(0.36) scaleY(1.28)
+        skewY(-10deg) rotateY(-15deg);
+    }
+    56% {
+      opacity: 0.98;
+      transform: translate3d(11px, 0, -2px) scaleX(0.74) scaleY(1.18)
+        skewY(-3.8deg) rotateY(-6deg);
+    }
+    74% {
+      opacity: 1;
+      transform: translate3d(-6px, 0, 0) scaleX(1.1) scaleY(0.92)
+        skewY(1.4deg) rotateY(4deg);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+      transform: translate3d(0, 0, 0) scaleX(1) scaleY(1) skewY(0deg)
+        rotateY(0deg);
+    }
+  }
+
+  @keyframes dock-dots-follow-collapse-strong {
+    0%,
+    38% {
+      opacity: 0;
+    }
+    62% {
+      opacity: 0.38;
+    }
+    100% {
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes dock-stack-collapse-ultra {
+    0% {
+      opacity: 1;
+      filter: brightness(1.08);
+      transform: translate3d(0, 0, 0) scaleX(1) scaleY(1) skewY(0deg)
+        rotateY(0deg);
+    }
+    14% {
+      opacity: 0.97;
+      transform: translate3d(17px, -0.5px, 0) scaleX(0.44) scaleY(1.32)
+        skewY(-11deg) rotateY(-16deg);
+    }
+    32% {
+      opacity: 0.78;
+      transform: translate3d(34px, 1.5px, -5px) scaleX(0.12) scaleY(1.48)
+        skewY(-18deg) rotateY(-28deg);
+    }
+    52% {
+      opacity: 0.42;
+      transform: translate3d(46px, 3px, -10px) scaleX(0.045) scaleY(0.92)
+        skewY(-23deg) rotateY(-37deg);
+    }
+    72% {
+      opacity: 0.1;
+      transform: translate3d(56px, 5px, -15px) scaleX(0.02) scaleY(0.36)
+        skewY(-27deg) rotateY(-43deg);
+    }
+    100% {
+      opacity: 0;
+      filter: brightness(1);
+      transform: translate3d(62px, 7px, -18px) scaleX(0.01) scaleY(0.06)
+        skewY(-30deg) rotateY(-46deg);
+    }
+  }
+
+  @keyframes dock-stack-restore-ultra {
+    0% {
+      opacity: 0;
+      filter: brightness(1.18);
+      transform: translate3d(62px, 7px, -18px) scaleX(0.01) scaleY(0.06)
+        skewY(-30deg) rotateY(-46deg);
+    }
+    15% {
+      opacity: 0.42;
+      transform: translate3d(46px, 5px, -13px) scaleX(0.058) scaleY(0.72)
+        skewY(-23deg) rotateY(-35deg);
+    }
+    34% {
+      opacity: 0.92;
+      transform: translate3d(30px, 2px, -8px) scaleX(0.42) scaleY(1.36)
+        skewY(-14deg) rotateY(-21deg);
+    }
+    52% {
+      opacity: 0.99;
+      transform: translate3d(13px, 0.5px, -4px) scaleX(0.68) scaleY(1.24)
+        skewY(-5.5deg) rotateY(-8deg);
+    }
+    71% {
+      opacity: 1;
+      transform: translate3d(-8px, 0, 0) scaleX(1.16) scaleY(0.88)
+        skewY(2.2deg) rotateY(6deg);
+    }
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+      transform: translate3d(0, 0, 0) scaleX(1) scaleY(1) skewY(0deg)
+        rotateY(0deg);
+    }
+  }
+
+  @keyframes dock-dots-follow-collapse-ultra {
+    0%,
+    32% {
+      opacity: 0;
+    }
+    56% {
+      opacity: 0.45;
+    }
+    100% {
+      opacity: 0.9;
+    }
+  }
+
+  .dock-stack-warp {
+    transform-origin: 100% 50%;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+  }
+
+  .animate-dock-stack-collapse {
+    animation: dock-stack-collapse 520ms cubic-bezier(0.52, 0.02, 0.72, 0.94)
+      both;
+  }
+
+  .animate-dock-stack-restore {
+    animation: dock-stack-restore 560ms cubic-bezier(0.12, 0.85, 0.22, 1) both;
+  }
+
+  .animate-dock-dots-follow {
+    animation: dock-dots-follow-collapse 520ms cubic-bezier(0.45, 0.02, 0.52, 1)
+      both;
+  }
+
+  .animate-dock-stack-collapse-strong {
+    animation: dock-stack-collapse-strong 570ms cubic-bezier(0.58, 0, 0.78, 0.95)
+      both;
+  }
+
+  .animate-dock-stack-restore-strong {
+    animation: dock-stack-restore-strong 640ms cubic-bezier(0.08, 0.8, 0.16, 1)
+      both;
+  }
+
+  .animate-dock-dots-follow-strong {
+    animation: dock-dots-follow-collapse-strong 570ms
+      cubic-bezier(0.45, 0.02, 0.52, 1) both;
+  }
+
+  .animate-dock-stack-collapse-ultra {
+    animation: dock-stack-collapse-ultra 690ms cubic-bezier(0.62, 0, 0.82, 0.96)
+      both;
+  }
+
+  .animate-dock-stack-restore-ultra {
+    animation: dock-stack-restore-ultra 750ms cubic-bezier(0.06, 0.76, 0.12, 1)
+      both;
+  }
+
+  .animate-dock-dots-follow-ultra {
+    animation: dock-dots-follow-collapse-ultra 690ms
+      cubic-bezier(0.42, 0.02, 0.52, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-dock-stack-collapse,
+    .animate-dock-stack-restore,
+    .animate-dock-dots-follow {
+      animation: none !important;
+    }
+
+    .animate-dock-stack-collapse-strong,
+    .animate-dock-stack-restore-strong,
+    .animate-dock-dots-follow-strong {
+      animation: none !important;
+    }
+
+    .animate-dock-stack-collapse-ultra,
+    .animate-dock-stack-restore-ultra,
+    .animate-dock-dots-follow-ultra {
+      animation: none !important;
+    }
+
+    .dock-stack-warp {
+      transform: none !important;
+      filter: none !important;
+      opacity: 1;
+    }
   }
 }
